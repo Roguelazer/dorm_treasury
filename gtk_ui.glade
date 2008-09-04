@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE glade-interface SYSTEM "glade-2.0.dtd">
-<!--Generated with glade3 3.4.5 on Wed Sep  3 20:31:30 2008 -->
+<!--Generated with glade3 3.4.5 on Wed Sep  3 21:13:28 2008 -->
 <glade-interface>
   <widget class="GtkWindow" id="MainWindow">
     <property name="visible">True</property>
@@ -23,7 +23,7 @@
         </child>
         <child>
           <widget class="GtkHBox" id="hbox1">
-            <property name="height_request">60</property>
+            <property name="height_request">30</property>
             <property name="visible">True</property>
             <child>
               <widget class="GtkButton" id="btnNewAllocation">
@@ -49,24 +49,26 @@
               </packing>
             </child>
             <child>
-              <widget class="GtkButton" id="btnDeleteAllocation">
+              <widget class="GtkButton" id="btnExpenditures">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="label" translatable="yes">Delete Allocation</property>
+                <property name="label" translatable="yes">Info</property>
                 <property name="response_id">0</property>
+                <signal name="clicked" handler="show_expenditures"/>
               </widget>
               <packing>
                 <property name="position">2</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkButton" id="btnCloseAlloc">
+              <widget class="GtkButton" id="btnClose">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="label" translatable="yes">Close Allocation</property>
+                <property name="label" translatable="yes">Close</property>
                 <property name="response_id">0</property>
+                <signal name="clicked" handler="on_quit"/>
               </widget>
               <packing>
                 <property name="position">3</property>
@@ -87,6 +89,7 @@
     <property name="window_position">GTK_WIN_POS_CENTER_ON_PARENT</property>
     <property name="destroy_with_parent">True</property>
     <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
+    <property name="transient_for">MainWindow</property>
     <property name="has_separator">False</property>
     <child internal-child="vbox">
       <widget class="GtkVBox" id="dialog-vbox1">
@@ -208,6 +211,7 @@
     <property name="title" translatable="yes">Add Expenditure</property>
     <property name="window_position">GTK_WIN_POS_CENTER_ON_PARENT</property>
     <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
+    <property name="transient_for">MainWindow</property>
     <property name="has_separator">False</property>
     <child internal-child="vbox">
       <widget class="GtkVBox" id="dialog-vbox2">
@@ -335,6 +339,121 @@
                 <property name="use_stock">True</property>
                 <property name="response_id">0</property>
                 <signal name="clicked" handler="on_btnAddExpenditure_clicked"/>
+              </widget>
+              <packing>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="expand">False</property>
+            <property name="pack_type">GTK_PACK_END</property>
+          </packing>
+        </child>
+      </widget>
+    </child>
+  </widget>
+  <widget class="GtkDialog" id="allocationInfo">
+    <property name="border_width">5</property>
+    <property name="title" translatable="yes">Allocation Info</property>
+    <property name="window_position">GTK_WIN_POS_CENTER_ON_PARENT</property>
+    <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
+    <property name="transient_for">MainWindow</property>
+    <property name="has_separator">False</property>
+    <child internal-child="vbox">
+      <widget class="GtkVBox" id="dialog-vbox3">
+        <property name="visible">True</property>
+        <property name="spacing">2</property>
+        <child>
+          <widget class="GtkVBox" id="vbox2">
+            <property name="visible">True</property>
+            <child>
+              <widget class="GtkVBox" id="vbox3">
+                <property name="visible">True</property>
+                <child>
+                  <widget class="GtkTreeView" id="expendituresView">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="headers_clickable">True</property>
+                  </widget>
+                </child>
+                <child>
+                  <widget class="GtkLabel" id="AIlblsummary">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">Summary:</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+              </widget>
+            </child>
+            <child>
+              <widget class="GtkHButtonBox" id="hbuttonbox1">
+                <property name="visible">True</property>
+                <child>
+                  <widget class="GtkButton" id="AIbtnAddExpenditure">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="label" translatable="yes">Add Expenditure</property>
+                    <property name="response_id">0</property>
+                    <signal name="clicked" handler="on_AIbtnAddExpenditure_clicked"/>
+                  </widget>
+                </child>
+                <child>
+                  <widget class="GtkButton" id="AIbtnDelExpenditure">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="label" translatable="yes">Delete Expenditure</property>
+                    <property name="response_id">0</property>
+                    <signal name="clicked" handler="on_AIbtnDelExpenditure_clicked"/>
+                  </widget>
+                  <packing>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkButton" id="AIbtnCloseAllocation">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="label" translatable="yes">Close Allocation</property>
+                    <property name="response_id">0</property>
+                    <signal name="clicked" handler="AIbtnCloseAllocation_clicked_cb"/>
+                  </widget>
+                  <packing>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </widget>
+              <packing>
+                <property name="expand">False</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child internal-child="action_area">
+          <widget class="GtkHButtonBox" id="dialog-action_area3">
+            <property name="visible">True</property>
+            <property name="layout_style">GTK_BUTTONBOX_END</property>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <widget class="GtkButton" id="AIclose">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="label" translatable="yes">gtk-close</property>
+                <property name="use_stock">True</property>
+                <property name="response_id">0</property>
               </widget>
               <packing>
                 <property name="position">1</property>
