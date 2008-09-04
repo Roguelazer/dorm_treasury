@@ -196,7 +196,7 @@ class GtkUiGlade
 	end
 
 	def populate_list_box
-		@treasury.allocations {|a|
+		@treasury.each_allocation {|a|
 			add_alloc_to_listmodel(a)
 		}
 	end

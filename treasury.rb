@@ -32,17 +32,18 @@ class Treasury
 		}
 	end
 
-	def allocations
-		@allocations.each { |a|
-			yield a
+	def expenditure(expid)
+		@db.execute("SELECT allocid,date,name,amount FROM expenditures WHERE ROWID=#{expid}") { |e|
+			return Expenditure.new(expid, e[0], e[1], e[2], e[3])
 		}
 	end
 
+	def each_allocation 
+		@allocations.each { |a| yield a }
+	end
 
-	def expenditures
-		@expenditures.each { |e|
-			yield e
-		}
+	def each_expenditure
+		@expenditures.each { |e| yield e }
 	end
 
 	def expenditures_for(allocid)
@@ -69,6 +70,18 @@ class Treasury
 		expenditure = Expenditure.new(expid, allocid, date, name, amount)
 		@expenditures.push(expenditure)
 		expenditure
+	end
+
+	def delete_allocation(allocid)
+		if (!allocid.nil?)
+			@db.execute("DELETE FROM allocations WHERE ROWID=#{allocid}")
+		end
+	end
+
+	def delete_expenditure(expid)
+		if (!expid.nil?)
+			@db.execute("DELETE FROM expenditures WHERE ROWID=#{expid}")
+		end
 	end
 
 	private :sync_with_database
