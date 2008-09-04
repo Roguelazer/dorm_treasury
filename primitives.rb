@@ -12,6 +12,10 @@ class Allocation
 		@name = name.to_s
 		@amount = amount.to_f
 	end
+
+	def to_s
+		return "Allocation #{@allocid}: $#{@amount} for #{@name} on #{@date.to_s}"
+	end
 end
 
 class Expenditure
@@ -24,5 +28,9 @@ class Expenditure
 		@date = Date.parse(date)
 		@name = name.to_s
 		@amount = amount.to_f
+	end
+
+	def to_s
+		return "Expenditure ##{@expid}: $#{@amount} to #{@name} for Allocation ##{@allocid} on #{@date.to_s}"
 	end
 end
