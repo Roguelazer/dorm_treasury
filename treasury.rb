@@ -13,6 +13,10 @@ class Treasury
 		sync_with_database()
 	end
 
+	def close
+		@db.close
+	end
+
 	def sync_with_database()
 		@db.execute("SELECT ROWID,date,name,amount from allocations") { |allocation|
 			@allocations.push(Allocation.new(allocation[0], allocation[1], allocation[2], allocation[3]))
@@ -33,6 +37,22 @@ class Treasury
 		@expenditures.each { |e|
 			yield e
 		}
+	end
+
+	def add_allocation(date, name, amount)
+		@db.execute("INSERT INTO allocations (date, name, amount) VALUES('#{date}', '#{name}', #{amount})")
+		allocid = @db.last_insert_row_id
+		allocation = Allocation.new(allocid, date, name, amount)
+		@allocations.push(allocation)
+		allocation
+	end
+
+	def add_expenditure(allocid, date, name, amount)
+		@db.execute("INSERT INTO expenditures (allocid, date, name, amount) VALUES(#{allocid}, '#{date}', '#{name}', #{amount})")
+		expid = @db.last_insert_row_id
+		expenditure = Expenditure.new(expid, allocid, date, name, amount)
+		@expenditures.push(expenditure)
+		expenditure
 	end
 
 	private :sync_with_database

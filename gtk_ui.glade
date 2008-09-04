@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE glade-interface SYSTEM "glade-2.0.dtd">
-<!--Generated with glade3 3.4.5 on Wed Sep  3 19:40:02 2008 -->
+<!--Generated with glade3 3.4.5 on Wed Sep  3 20:31:30 2008 -->
 <glade-interface>
   <widget class="GtkWindow" id="MainWindow">
     <property name="visible">True</property>
     <property name="title" translatable="yes">East Dorm Treasury</property>
+    <property name="default_width">400</property>
+    <property name="default_height">600</property>
     <signal name="delete_event" handler="on_quit"/>
     <child>
       <widget class="GtkVBox" id="vbox1">
@@ -15,6 +17,8 @@
             <property name="can_focus">True</property>
             <property name="headers_clickable">True</property>
             <property name="rules_hint">True</property>
+            <property name="search_column">0</property>
+            <property name="enable_grid_lines">GTK_TREE_VIEW_GRID_LINES_BOTH</property>
           </widget>
         </child>
         <child>
@@ -28,6 +32,7 @@
                 <property name="receives_default">True</property>
                 <property name="label" translatable="yes">New Allocation</property>
                 <property name="response_id">0</property>
+                <signal name="clicked" handler="on_btnNewAllocation_clicked"/>
               </widget>
             </child>
             <child>
@@ -37,9 +42,22 @@
                 <property name="receives_default">True</property>
                 <property name="label" translatable="yes">New Expenditure</property>
                 <property name="response_id">0</property>
+                <signal name="clicked" handler="on_btnNewExpenditure_clicked"/>
               </widget>
               <packing>
                 <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkButton" id="btnDeleteAllocation">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="label" translatable="yes">Delete Allocation</property>
+                <property name="response_id">0</property>
+              </widget>
+              <packing>
+                <property name="position">2</property>
               </packing>
             </child>
             <child>
@@ -51,7 +69,7 @@
                 <property name="response_id">0</property>
               </widget>
               <packing>
-                <property name="position">2</property>
+                <property name="position">3</property>
               </packing>
             </child>
           </widget>
@@ -63,9 +81,11 @@
       </widget>
     </child>
   </widget>
-  <widget class="GtkDialog" id="addExpenditure">
+  <widget class="GtkDialog" id="addAllocation">
     <property name="border_width">5</property>
+    <property name="modal">True</property>
     <property name="window_position">GTK_WIN_POS_CENTER_ON_PARENT</property>
+    <property name="destroy_with_parent">True</property>
     <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
     <property name="has_separator">False</property>
     <child internal-child="vbox">
@@ -168,6 +188,153 @@
                 <property name="label" translatable="yes">gtk-add</property>
                 <property name="use_stock">True</property>
                 <property name="response_id">0</property>
+                <signal name="clicked" handler="dialog_btnAdd_clicked"/>
+              </widget>
+              <packing>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="expand">False</property>
+            <property name="pack_type">GTK_PACK_END</property>
+          </packing>
+        </child>
+      </widget>
+    </child>
+  </widget>
+  <widget class="GtkDialog" id="addExpenditure">
+    <property name="border_width">5</property>
+    <property name="title" translatable="yes">Add Expenditure</property>
+    <property name="window_position">GTK_WIN_POS_CENTER_ON_PARENT</property>
+    <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
+    <property name="has_separator">False</property>
+    <child internal-child="vbox">
+      <widget class="GtkVBox" id="dialog-vbox2">
+        <property name="visible">True</property>
+        <property name="spacing">2</property>
+        <child>
+          <widget class="GtkTable" id="table2">
+            <property name="visible">True</property>
+            <property name="n_rows">4</property>
+            <property name="n_columns">2</property>
+            <child>
+              <widget class="GtkEntry" id="AEname">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+              </widget>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+                <property name="top_attach">2</property>
+                <property name="bottom_attach">3</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkEntry" id="AEamount">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="text" translatable="yes">0.00</property>
+              </widget>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+                <property name="top_attach">3</property>
+                <property name="bottom_attach">4</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkLabel" id="lblAEAmount">
+                <property name="visible">True</property>
+                <property name="label" translatable="yes">Amount</property>
+              </widget>
+              <packing>
+                <property name="top_attach">3</property>
+                <property name="bottom_attach">4</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkLabel" id="lblAEname">
+                <property name="visible">True</property>
+                <property name="label" translatable="yes">Name</property>
+              </widget>
+              <packing>
+                <property name="top_attach">2</property>
+                <property name="bottom_attach">3</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkCalendar" id="AEdate">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="year">2008</property>
+                <property name="month">8</property>
+                <property name="day">3</property>
+              </widget>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+                <property name="top_attach">1</property>
+                <property name="bottom_attach">2</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkLabel" id="lblDat">
+                <property name="visible">True</property>
+                <property name="label" translatable="yes">Date</property>
+              </widget>
+              <packing>
+                <property name="top_attach">1</property>
+                <property name="bottom_attach">2</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkEntry" id="AEallocid">
+                <property name="visible">True</property>
+                <property name="sensitive">False</property>
+                <property name="editable">False</property>
+                <property name="width_chars">5</property>
+                <property name="shadow_type">GTK_SHADOW_NONE</property>
+              </widget>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkLabel" id="lblAEallocid">
+                <property name="visible">True</property>
+                <property name="label" translatable="yes">Allocation ID</property>
+              </widget>
+            </child>
+          </widget>
+          <packing>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child internal-child="action_area">
+          <widget class="GtkHButtonBox" id="dialog-action_area2">
+            <property name="visible">True</property>
+            <property name="layout_style">GTK_BUTTONBOX_END</property>
+            <child>
+              <widget class="GtkButton" id="button1">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="label" translatable="yes">gtk-cancel</property>
+                <property name="use_stock">True</property>
+                <property name="response_id">0</property>
+              </widget>
+            </child>
+            <child>
+              <widget class="GtkButton" id="btnAddExpenditure">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="label" translatable="yes">gtk-add</property>
+                <property name="use_stock">True</property>
+                <property name="response_id">0</property>
+                <signal name="clicked" handler="on_btnAddExpenditure_clicked"/>
               </widget>
               <packing>
                 <property name="position">1</property>

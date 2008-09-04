@@ -8,7 +8,11 @@ class Allocation
 
 	def initialize(allocid, date, name, amount)
 		@allocid = allocid.to_i
-		@date = Date.parse(date)
+		if(date.is_a?(Date))
+			@date = date
+		else
+			@date = Date.parse(date)
+		end
 		@name = name.to_s
 		@amount = amount.to_f
 	end
@@ -25,7 +29,11 @@ class Expenditure
 	def initialize(expid, allocid, date, name, amount)
 		@expid = expid.to_i
 		@allocid = allocid.to_i
-		@date = Date.parse(date)
+		if (date.is_a?(Date))
+			@date = date
+		else
+			@date = Date.parse(date)
+		end
 		@name = name.to_s
 		@amount = amount.to_f
 	end
