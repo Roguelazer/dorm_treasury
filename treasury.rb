@@ -33,7 +33,7 @@ class Treasury
 	end
 
 	def expenditure(expid)
-		@db.execute("SELECT allocid,date,name,amount,check_no FROM expenditures WHERE ROWID=#{expid}") { |e|
+		@db.execute("SELECT expenditures.allocid,expenditures.date,expenditures.name,expenditures.amount,expenditures.check_no,checks.check_no FROM expenditures,checks WHERE expenditures.ROWID=#{expid} AND checks.ROWID=expenditures.check_no") { |e|
 			return Expenditure.new(expid, e[0], e[1], e[2], e[3],e[4])
 		}
 	end
@@ -53,19 +53,19 @@ class Treasury
 	end
 
 	def check(check_no)
-		@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.check_no") { |e|
+		@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID") { |e|
 			expenditure = @expenditures.select{|item| item.expid==e[0].to_i }
-			return Check.new(e[1],expenditure[0],e[2])
+			return Check.new(e[1],expenditure[0],e[2],e[3])
 		}
 	end
 
 	def each_check
-		@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.check_no") { |e|
+		@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID ORDER BY expenditures.date") { |e|
 			expenditure = @expenditures.select{|item| item.expid==e[0].to_i }
 			if (expenditure.size != 1)
 				puts "ERROR!!!"
 			else
-				yield Check.new(e[1], expenditure[0], e[2])
+				yield Check.new(e[1], expenditure[0], e[2],e[3])
 			end
 		}
 	end
@@ -122,6 +122,10 @@ class Treasury
 			}
 			@db.execute("DELETE FROM checks WHERE check_no=#{check_no}")
 		end
+	end
+
+	def balance
+		return @db.get_first_row("SELECT sum(-amount) FROM expenditures")[0]
 	end
 
 	private :sync_with_database

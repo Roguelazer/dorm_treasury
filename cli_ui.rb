@@ -53,6 +53,8 @@ class CLIInterface
 			print_allocations
 		when /^quit/
 			Kernel.exit(0)
+		when /^exit/
+			Kernel.exit(0)
 		when /^unallocat/
 			unallocate
 		when /^unexpend/
@@ -110,25 +112,30 @@ class CLIInterface
 	end
 
 	def print_checks
-		print "|------------------------------------------------------------------------------|\n"
-		print "| Check |   Date     |             To                                  |Cashed?|\n"
-		print "|------------------------------------------------------------------------------|\n"
+		print "|-----------------------------------------------------------------------------------------|\n"
+		print "| Check |   Date     |             To                                  |  Amount  |Cashed?|\n"
+		print "|-----------------------------------------------------------------------------------------|\n"
 		@treasury.each_check { |check|
-			print "| " + "%05d" % check.check_no + " "
+			print "| " + "%5d" % check.check_no + " "
 			print "| " + check.expenditure.date.to_s + " "
 			print "| " + check.expenditure.name.to_s[0..47]
 			if (check.expenditure.name.to_s.size < 48)
 				print " " * (48 - check.expenditure.name.to_s.size)
 			end
 			print "| "
+			print "%8.2f" % check.expenditure.amount
+			print " |"
 			if (check.cashed)
-				print " True"
+				print " True "
 			else
-				print "False"
+				print " False"
 			end
 			print " |\n"
 		}
-		print "|------------------------------------------------------------------------------|\n"
+		print "|-----------------------------------------------------------------------------------------|\n"
+		balance = "$%8.2f" % @treasury.balance  
+		print "|                                                              Balance: #{balance}         |\n"
+		print "|-----------------------------------------------------------------------------------------|\n"
 	end
 
 
@@ -151,7 +158,7 @@ class CLIInterface
 			print "  | "
 			print a.date.to_s
 			print "  | "
-			print "%08.2f" % a.amount
+			print "%8.2f" % a.amount
 			print "  | "
 			print a.name[0..41].to_s
 			diff = 42 - a.name.to_s.size
@@ -275,8 +282,11 @@ class CLIInterface
 		print "Add entry (Y/n) "
 		confirm = @stdin.readline.strip
 		if (confirm.size == 0 || confirm =~ /^y/i)
-			e = @treasury.add_expenditure(-1, date, title, amount, check_no)
-			puts "Check added"
+			e = @treasury.add_expenditure(-1, date, name, amount, check_no)
+			if(check_no == -1)
+				@treasury.cash_check(-1)
+			end
+			puts "Check added" 
 		end
 	end
 

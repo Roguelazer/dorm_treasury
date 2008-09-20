@@ -45,10 +45,9 @@ class Expenditure
 end
 
 class Check
-	attr_accessor :cashed
-	attr_reader :expenditure, :check_no
+	attr_reader :expenditure, :check_no, :cashed
 
-	def initialize(number, expenditure, cashed)
+	def initialize(number, expenditure, cashed, cid)
 		@check_no = number
 		@expenditure = expenditure
 		if (cashed.to_i > 0)
@@ -56,6 +55,7 @@ class Check
 		else
 			@cashed = false
 		end
+		@cid = cid
 	end
 
 	def to_s

@@ -187,14 +187,14 @@ class GtkUiGlade
 		bindtextdomain(domain, localedir, nil, "UTF-8")
 		@glade = GladeXML.new(path_or_data, "MainWindow", domain, localedir, flag) {|handler| method(handler)}
 		@expglade = @glade
-		@listmodel = Gtk::ListStore.new(Integer, String, String, Float, Float)
+		@listmodel = Gtk::ListStore.new(Integer, String, String, String, String)
 		populate_list_box
 		@allocationslist = @glade.get_widget("allocationsTV")
 		@allocationslist.selection.mode = Gtk::SELECTION_SINGLE
 		@allocationslist.model = @listmodel
 		initialize_columns
 
-		@checkslistmodel = Gtk::ListStore.new(Integer, String, String, Integer)
+		@checkslistmodel = Gtk::ListStore.new(String, String, String, String, Integer)
 		add_checks
 		@checkslist = @glade.get_widget("checksTV")
 		@checkslist.selection.mode = Gtk::SELECTION_SINGLE
@@ -269,10 +269,10 @@ class GtkUiGlade
 		row[0] = allocation.allocid
 		row[1] = allocation.date.to_s
 		row[2] = allocation.name
-		row[3] = allocation.amount
+		row[3] = "%8.2f" % allocation.amount.to_f
 		spent = 0
 		@treasury.expenditures_for(allocation.allocid) { |e| spent += e.amount }
-		row[4] = spent
+		row[4] = "%8.2f" % spent.to_f
 	end
 
 	def populate_list_box
@@ -283,13 +283,17 @@ class GtkUiGlade
 
 	def add_check(c)
 		row = @checkslistmodel.append
-		row[0] = c.check_no.to_i
+		row[0] = c.check_no
+		if (row[0] == "-1")
+			row[0] = "deposit"
+		end
 		row[1] = c.expenditure.date.to_s
 		row[2] = c.expenditure.name.to_s
+		row[3] = "$%8.2f" % c.expenditure.amount.to_s
 		if (c.cashed)
-			row[3] = 1
+			row[4] = 1
 		else
-			row[3] = 0
+			row[4] = 0
 		end
 	end
 	
@@ -328,8 +332,11 @@ class GtkUiGlade
 		renderer = Gtk::CellRendererText.new
 		col = Gtk::TreeViewColumn.new("To", renderer, :text => 2)
 		@checkslist.append_column(col)
+		renderer = Gtk::CellRendererText.new
+		col = Gtk::TreeViewColumn.new("Amount", renderer, :text => 3)
+		@checkslist.append_column(col)
 		renderer = Gtk::CellRendererToggle.new
-		col = Gtk::TreeViewColumn.new("Cashed", renderer, :active => 3)
+		col = Gtk::TreeViewColumn.new("Cashed", renderer, :active => 4)
 		@checkslist.append_column(col)
 	end
 
