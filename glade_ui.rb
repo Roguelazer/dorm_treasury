@@ -3,6 +3,39 @@
 require 'libglade2'
 require 'treasury'
 
+class AddAllocation
+	include GetText
+
+	def initialize(treasury, path)
+		@path = path
+		@treasury = treasury
+		bindtextdomain(nil, nil, nil, "UTF-8")
+		@glade =GladeXML.new(@path, "addAllocation") { |h| method(h) }
+	end
+
+	def show
+		dialog = @glade.get_widget("addAllocation")
+		dialog.run do |response|
+			if (response == Gtk::Dialog::RESPONSE_ACCEPT)
+				name = @glade.get_widget("title").text.to_s
+				amount = @glade.get_widget("amount").text.to_s
+				dateargs = @glade.get_widget("date").date
+				date = Date.civil(dateargs[0], dateargs[1], dateargs[2])
+				allocation = @treasury.add_allocation(date, name, amount)
+				dialog.destroy
+				return allocation
+			end
+			dialog.destroy
+			return nil
+		end
+	end
+	
+	def dialog_btnAdd_clicked
+		dialog = @glade.get_widget("addAllocation")
+		dialog.response(Gtk::Dialog::RESPONSE_ACCEPT)
+	end
+end
+
 class AddExpenditure
 	include GetText
 
@@ -56,36 +89,37 @@ class AddExpenditure
 	end
 end
 
-class AddAllocation
+class AddCheck
 	include GetText
 
 	def initialize(treasury, path)
 		@path = path
 		@treasury = treasury
 		bindtextdomain(nil, nil, nil, "UTF-8")
-		@glade =GladeXML.new(@path, "addAllocation") { |h| method(h) }
+		@glade = GladeXML.new(@path, "addCheck") { |h| method(h) }
+		today = Date.today()
+		dw = @glade.get_widget("calDate")
+		dw.year = today.year
+		dw.month = today.month
+		dw.day = today.day
 	end
 
 	def show
-		dialog = @glade.get_widget("addAllocation")
+		dialog = @glade.get_widget("addCheck")
 		dialog.run do |response|
 			if (response == Gtk::Dialog::RESPONSE_ACCEPT)
-				name = @glade.get_widget("title").text.to_s
-				amount = @glade.get_widget("amount").text.to_s
-				dateargs = @glade.get_widget("date").date
+				name = @glade.get_widget("txtName").text.to_s
+				amount = @glade.get_widget("txtAmount").text.to_f
+				dateargs = @glade.get_widget("calDate").date
 				date = Date.civil(dateargs[0], dateargs[1], dateargs[2])
-				allocation = @treasury.add_allocation(date, name, amount)
+				check_no = @glade.get_widget("txtCheckNo").text.to_i
+				expenditure = @treasury.add_expenditure(-1, date, name, amount, check_no)
 				dialog.destroy
-				return allocation
+				return @treasury.check(expenditure.check_no)
 			end
 			dialog.destroy
 			return nil
 		end
-	end
-	
-	def dialog_btnAdd_clicked
-		dialog = @glade.get_widget("addAllocation")
-		dialog.response(Gtk::Dialog::RESPONSE_ACCEPT)
 	end
 end
 
@@ -206,6 +240,7 @@ class GtkUiGlade
 		@checkslist.model = @checkslistmodel
 		initialize_check_columns
 		update_checking_total
+		update_alloc_summary
 	end
 
 	def on_quit
@@ -218,6 +253,7 @@ class GtkUiGlade
 		allocation = a.show
 		if (!allocation.nil?)
 			add_alloc_to_listmodel(allocation)
+			update_alloc_summary
 		end
 	end
 
@@ -243,9 +279,11 @@ class GtkUiGlade
 		@treasury.expenditures_for(allocid) { |e|
 			spent += e.amount
 		}
+		update_alloc_summary
 		@allocationslist.selection.selected[4] = spent.to_s
 		if (!expenditure.check_no.nil?)
 			add_check(@treasury.check(expenditure.check_no))
+			update_checking_total
 		end
 	end
 
@@ -337,7 +375,7 @@ class GtkUiGlade
 		col = Gtk::TreeViewColumn.new("Date", renderer, :text=>1)
 		@checkslist.append_column(col)
 		renderer = Gtk::CellRendererText.new
-		col = Gtk::TreeViewColumn.new("To", renderer, :text => 2)
+		col = Gtk::TreeViewColumn.new("Name", renderer, :text => 2)
 		@checkslist.append_column(col)
 		renderer = Gtk::CellRendererText.new
 		col = Gtk::TreeViewColumn.new("Amount", renderer, :text => 3)
@@ -348,21 +386,29 @@ class GtkUiGlade
 	end
 
 	def btnDeleteClicked
-		case @glade.get_widget("notebookMain").page
-		when 0
-			selection = @glade.get_widget("allocationsTV").selection.selected
-			if (!selection.nil?)
-				allocid = selection[0].to_i
-				@treasury.delete_allocation(allocid)
-				@listmodel.remove(selection)
-			end
-		when 1
-			selection = @glade.get_widget("checksTV").selection.selected
-			if (!selection.nil?)
-				check_no = selection[0].to_i
-				@treasury.delete_check(check_no)
-				@checkslistmodel.remove(selection)
-			end
+		selection = @glade.get_widget("allocationsTV").selection.selected
+		if (!selection.nil?)
+			allocid = selection[0].to_i
+			@treasury.delete_allocation(allocid)
+			@listmodel.remove(selection)
+		end
+	end
+
+	def btnNewCheckClicked
+		c = AddCheck.new(@treasury, @path)
+		check = c.show
+		if (check)
+			add_check(check)
+			update_checking_total
+		end
+	end
+
+	def btnDeleteCheckClicked
+		selection = @glade.get_widget("checksTV").selection.selected
+		if (!selection.nil?)
+			check_no = selection[0].to_i
+			@treasury.delete_check(check_no)
+			@checkslistmodel.remove(selection)
 		end
 	end
 
@@ -371,14 +417,20 @@ class GtkUiGlade
 		@glade.get_widget("lblChecksSummary").text = "Current Available Balance: $#{balance}"
 		balance
 	end
+
+	def update_alloc_summary
+		alloc = @treasury.total_allocations.to_f
+		spent = @treasury.total_spent_for_allocations.to_f
+		@glade.get_widget("lblAllocSummary").text = ("Summary: $%.2f spent/$%.2f allocated" % [spent, alloc])
+		spent / alloc
+	end
 	
 	# Called whenever the page is switched in the main view
 	def page_switched(widget, page, page_num)
 		case page_num
-		when 0: 
-			populate_list_box
+		when 0:
+			update_alloc_summary
 		when 1:
-			add_checks
 			update_checking_total
 		end
 	end

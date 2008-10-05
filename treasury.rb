@@ -131,6 +131,14 @@ class Treasury
 		return @db.get_first_row("SELECT sum(-amount) FROM expenditures")[0]
 	end
 
+	def total_allocations
+		return @db.get_first_row("SELECT sum(amount) FROM allocations")[0]
+	end
+
+	def total_spent_for_allocations
+		return @db.get_first_row("SELECT SUM(expenditures.amount) FROM expenditures,allocations WHERE allocations.ROWID=expenditures.allocid")[0]
+	end
+
 	private :sync_with_database
 end
 
