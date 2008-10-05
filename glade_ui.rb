@@ -11,6 +11,11 @@ class AddExpenditure
 		@treasury= treasury
 		bindtextdomain(nil, nil, nil, "UTF-8")
 		@glade = GladeXML.new(path_or_data, "addExpenditure") { |h| method(h) }
+		today = Date.today()
+		dw = @glade.get_widget("AEdate")
+		dw.year = today.year 
+		dw.month = today.month - 1
+		dw.day = today.day
 	end
 
 	# Returns the added expenditure if one was added, else nil
@@ -200,6 +205,7 @@ class GtkUiGlade
 		@checkslist.selection.mode = Gtk::SELECTION_SINGLE
 		@checkslist.model = @checkslistmodel
 		initialize_check_columns
+		update_checking_total
 	end
 
 	def on_quit
@@ -237,7 +243,7 @@ class GtkUiGlade
 		@treasury.expenditures_for(allocid) { |e|
 			spent += e.amount
 		}
-		@allocationslist.selection.selected[4] = spent
+		@allocationslist.selection.selected[4] = spent.to_s
 		if (!expenditure.check_no.nil?)
 			add_check(@treasury.check(expenditure.check_no))
 		end
@@ -260,7 +266,7 @@ class GtkUiGlade
 		a.show(allocid)
 		spent = 0
 		@treasury.expenditures_for(allocid) { |e| spent += e.amount }
-		selection[4] = spent
+		selection[4] = "%8.2f" % spent
 		add_checks
 	end
 
@@ -276,6 +282,7 @@ class GtkUiGlade
 	end
 
 	def populate_list_box
+		@listmodel.clear
 		@treasury.each_allocation {|a|
 			add_alloc_to_listmodel(a)
 		}
@@ -358,6 +365,23 @@ class GtkUiGlade
 			end
 		end
 	end
+
+	def update_checking_total
+		balance = @treasury.balance
+		@glade.get_widget("lblChecksSummary").text = "Current Available Balance: $#{balance}"
+		balance
+	end
+	
+	# Called whenever the page is switched in the main view
+	def page_switched(widget, page, page_num)
+		case page_num
+		when 0: 
+			populate_list_box
+		when 1:
+			add_checks
+			update_checking_total
+		end
+	end
 end
 
 # Main program
@@ -365,6 +389,11 @@ if __FILE__ == $0
 	# Set values as your own application. 
 	PROG_PATH = "gtk_ui.glade"
 	PROG_NAME = "EastDormTreasury"
+	if(ARGV.length == 0)
+		puts "Usage:"
+		puts "\tprogram DB_FILE"
+		exit 1
+	end
 	treasury = Treasury.new(ARGV[0])
 	GtkUiGlade.new(treasury, PROG_PATH, nil, PROG_NAME)
 	Gtk.main

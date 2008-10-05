@@ -47,8 +47,8 @@ class Treasury
 	end
 
 	def expenditures_for(allocid)
-		@db.execute("SELECT ROWID,date,name,amount,check_no FROM expenditures WHERE allocid=#{allocid}") { |expenditure|
-			yield Expenditure.new(expenditure[0],allocid,expenditure[1],expenditure[2],expenditure[3],expenditure[4])
+		@db.execute("SELECT expenditures.ROWID,date,name,amount,expenditures.check_no,checks.check_no,checks.ROWID FROM expenditures,checks WHERE allocid=#{allocid} AND expenditures.check_no=checks.ROWID") { |expenditure|
+			yield Expenditure.new(expenditure[0],allocid,expenditure[1],expenditure[2],expenditure[3],expenditure[5])
 		}
 	end
 
@@ -79,13 +79,16 @@ class Treasury
 	end
 
 	def add_expenditure(allocid, date, name, amount, check_no = "NULL")
-		@db.execute("INSERT INTO expenditures (allocid, date, name, amount,check_no) VALUES(#{allocid}, '#{date}', '#{name}', #{amount}, #{check_no})")
+		if (check_no != "NULL")
+			@db.execute("INSERT INTO checks (check_no, cashed) VALUES(#{check_no}, 0)")
+			checkid = @db.last_insert_row_id
+			@db.execute("INSERT INTO expenditures (allocid, date, name, amount,check_no) VALUES(#{allocid}, '#{date}', '#{name}', #{amount}, #{checkid})")
+		end
 		expid = @db.last_insert_row_id
 		if (check_no == "NULL")
 			expenditure = Expenditure.new(expid, allocid, date, name, amount,nil)
 		else
 			expenditure = Expenditure.new(expid,allocid,date,name,amount,check_no)
-			@db.execute("INSERT INTO checks (check_no, cashed) VALUES(#{check_no}, 0)")
 		end
 		puts "Added expenditure #{expenditure}"
 		@expenditures.push(expenditure)
