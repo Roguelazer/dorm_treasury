@@ -27,19 +27,39 @@ class Treasury
 	end
 
 	def allocation(allocid)
-		@db.execute("SELECT date,name,amount,closed FROM allocations WHERE ROWID=#{allocid}") { |allocation|
-			return Allocation.new(allocid, allocation[0], allocation[1], allocation[2], allocation[3])
-		}
+		a = @allocations.select { |item| item.allocid == allocid }
+		if (a.size != 1)
+			@stderr.puts "Error! Multiple identically-numbered allocations detected!"
+			Kernel.exit(1)
+		end
+		return a[0]
+		#@db.execute("SELECT date,name,amount,closed FROM allocations WHERE ROWID=#{allocid}") { |allocation|
+		#	return Allocation.new(allocid, allocation[0], allocation[1], allocation[2], allocation[3])
+		#}
 	end
 
 	def expenditure(expid)
-		@db.execute("SELECT expenditures.allocid,expenditures.date,expenditures.name,expenditures.amount,expenditures.check_no,checks.check_no FROM expenditures,checks WHERE expenditures.ROWID=#{expid} AND checks.ROWID=expenditures.check_no") { |e|
-			return Expenditure.new(expid, e[0], e[1], e[2], e[3],e[4])
-		}
+		e = @expenditures.select { |item| item.expid == expid }
+		if (e.size != 1)
+			@stderr.puts "Error! Multiple identically-numbered expenditures detected!"
+			Kernel.exit(1)
+		end
+		return a[0]
+		#@db.execute("SELECT expenditures.allocid,expenditures.date,expenditures.name,expenditures.amount,expenditures.check_no,checks.check_no FROM expenditures,checks WHERE expenditures.ROWID=#{expid} AND checks.ROWID=expenditures.check_no") { |e|
+		#	return Expenditure.new(expid, e[0], e[1], e[2], e[3],e[4])
+		#}
 	end
 
-	def each_allocation 
-		@allocations.each { |a| yield a }
+	def each_allocation(open_only=false)
+		if (open_only)
+			@allocations.each { |a|
+				if (!a.closed)
+					yield a
+				end
+			}
+		else
+			@allocations.each { |a| yield a }
+		end
 	end
 
 	def each_expenditure
@@ -66,10 +86,10 @@ class Treasury
 	end
 
 	def each_check
-		@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID ORDER BY checks.check_no") { |e|
+		@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID,expenditures.date FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID ORDER BY checks.check_no, date") { |e|
 			expenditure = @expenditures.select{|item| item.expid==e[0].to_i }
 			if (expenditure.size != 1)
-				puts "ERROR!!!"
+				@stderr.puts "Error; expenditures to checks is not 1-to-1"
 			else
 				yield Check.new(e[1], expenditure[0], e[2],e[3])
 			end
