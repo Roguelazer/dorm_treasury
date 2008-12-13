@@ -24,7 +24,7 @@ class Allocation
 
 	def to_s
 		if (closed)
-			return "Allocation #{@allocid}: closed (originally for ${@amount})"
+			return "Allocation #{@allocid}: closed (originally for $#{@amount})"
 		else
 			return "Allocation #{@allocid}: $#{@amount} for #{@name} on #{@date.to_s}"
 		end
