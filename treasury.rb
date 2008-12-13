@@ -18,8 +18,8 @@ class Treasury
 	end
 
 	def sync_with_database()
-		@db.execute("SELECT ROWID,date,name,amount from allocations") { |allocation|
-			@allocations.push(Allocation.new(allocation[0], allocation[1], allocation[2], allocation[3]))
+		@db.execute("SELECT ROWID,date,name,amount,closed from allocations") { |allocation|
+			@allocations.push(Allocation.new(allocation[0], allocation[1], allocation[2], allocation[3], allocation[4]))
 		}
 		@db.execute("SELECT ROWID,date,name,amount,allocid FROM expenditures") { |expenditure|
 			@expenditures.push(Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3]))
@@ -27,8 +27,8 @@ class Treasury
 	end
 
 	def allocation(allocid)
-		@db.execute("SELECT date,name,amount FROM allocations WHERE ROWID=#{allocid}") { |allocation|
-			return Allocation.new(allocid, allocation[0], allocation[1], allocation[2])
+		@db.execute("SELECT date,name,amount,closed FROM allocations WHERE ROWID=#{allocid}") { |allocation|
+			return Allocation.new(allocid, allocation[0], allocation[1], allocation[2], allocation[3])
 		}
 	end
 
@@ -47,8 +47,14 @@ class Treasury
 	end
 
 	def expenditures_for(allocid)
-		@db.execute("SELECT expenditures.ROWID,date,name,amount,expenditures.check_no,checks.check_no,checks.ROWID FROM expenditures,checks WHERE allocid=#{allocid} AND expenditures.check_no=checks.ROWID") { |expenditure|
-			yield Expenditure.new(expenditure[0],allocid,expenditure[1],expenditure[2],expenditure[3],expenditure[5])
+		@db.execute("SELECT expenditures.ROWID,date,name,amount,expenditures.check_no FROM expenditures WHERE allocid=#{allocid}") { |expenditure|
+
+			if (expenditure[4].nil?)
+				yield Expenditure.new(expenditure[0], allocid, expenditure[1], expenditure[2], expenditure[3], nil)
+			else
+				cno = @db.get_first_row("SELECT check_no FROM checks WHERE ROWID=#{expenditure[4]}")[0]
+				yield Expenditure.new(expenditure[0],allocid,expenditure[1],expenditure[2],expenditure[3], cno)
+			end
 		}
 	end
 
@@ -60,7 +66,7 @@ class Treasury
 	end
 
 	def each_check
-		@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID ORDER BY expenditures.date") { |e|
+		@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID ORDER BY checks.check_no") { |e|
 			expenditure = @expenditures.select{|item| item.expid==e[0].to_i }
 			if (expenditure.size != 1)
 				puts "ERROR!!!"
@@ -70,10 +76,15 @@ class Treasury
 		}
 	end
 
-	def add_allocation(date, name, amount)
-		@db.execute("INSERT INTO allocations (date, name, amount) VALUES('#{date}', '#{name}', #{amount})")
+	def add_allocation(date, name, amount, closed=false)
+		if (closed)
+			c = 1
+		else
+			c = 0
+		end
+		@db.execute("INSERT INTO allocations (date, name, amount, closed) VALUES('#{date}', '#{name}', #{amount}, #{c})")
 		allocid = @db.last_insert_row_id
-		allocation = Allocation.new(allocid, date, name, amount)
+		allocation = Allocation.new(allocid, date, name, amount, closed)
 		@allocations.push(allocation)
 		allocation
 	end
@@ -83,6 +94,8 @@ class Treasury
 			@db.execute("INSERT INTO checks (check_no, cashed) VALUES(#{check_no}, 0)")
 			checkid = @db.last_insert_row_id
 			@db.execute("INSERT INTO expenditures (allocid, date, name, amount,check_no) VALUES(#{allocid}, '#{date}', '#{name}', #{amount}, #{checkid})")
+		else
+			@db.execute("INSERT INTO expenditures (allocid, date, name, amount) VALUES(#{allocid}, '#{date}', '#{name}', #{amount})")
 		end
 		expid = @db.last_insert_row_id
 		if (check_no == "NULL")
@@ -132,11 +145,19 @@ class Treasury
 	end
 
 	def total_allocations
-		return @db.get_first_row("SELECT sum(amount) FROM allocations")[0]
+		return @db.get_first_row("SELECT sum(amount) FROM allocations")[0].to_f
+	end
+
+	def total_open_allocations
+		return @db.get_first_row("SELECT sum(amount) FROM allocations WHERE closed=0")[0].to_f
 	end
 
 	def total_spent_for_allocations
 		return @db.get_first_row("SELECT SUM(expenditures.amount) FROM expenditures,allocations WHERE allocations.ROWID=expenditures.allocid")[0]
+	end
+
+	def close_allocation(allocid)
+		@db.execute("UPDATE allocations SET closed=1 WHERE ROWID=#{allocid}");
 	end
 
 	private :sync_with_database

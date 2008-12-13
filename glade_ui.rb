@@ -11,6 +11,11 @@ class AddAllocation
 		@treasury = treasury
 		bindtextdomain(nil, nil, nil, "UTF-8")
 		@glade =GladeXML.new(@path, "addAllocation") { |h| method(h) }
+		today = Date.today()
+		dw = @glade.get_widget("date")
+		dw.year = today.year 
+		dw.month = today.month - 1
+		dw.day = today.day
 	end
 
 	def show
@@ -100,8 +105,12 @@ class AddCheck
 		today = Date.today()
 		dw = @glade.get_widget("calDate")
 		dw.year = today.year
-		dw.month = today.month
+		dw.month = today.month - 1
 		dw.day = today.day
+	end
+
+	def on_add
+		@glade.get_widget("addCheck").response(Gtk::Dialog::RESPONSE_ACCEPT)
 	end
 
 	def show
@@ -116,6 +125,8 @@ class AddCheck
 				expenditure = @treasury.add_expenditure(-1, date, name, amount, check_no)
 				dialog.destroy
 				return @treasury.check(expenditure.check_no)
+			else
+				puts "Aborted"
 			end
 			dialog.destroy
 			return nil
@@ -225,6 +236,7 @@ class GtkUiGlade
 		@treasury = treasury
 		bindtextdomain(domain, localedir, nil, "UTF-8")
 		@glade = GladeXML.new(path_or_data, "MainWindow", domain, localedir, flag) {|handler| method(handler)}
+		@window = @glade.get_widget("MainWindow")
 		@expglade = @glade
 		@listmodel = Gtk::ListStore.new(Integer, String, String, String, String)
 		populate_list_box

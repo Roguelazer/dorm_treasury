@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE glade-interface SYSTEM "glade-2.0.dtd">
-<!--Generated with glade3 3.4.5 on Sat Oct  4 18:22:18 2008 -->
+<!--Generated with glade3 3.4.5 on Wed Oct 22 18:41:36 2008 -->
 <glade-interface>
   <widget class="GtkWindow" id="MainWindow">
     <property name="visible">True</property>
@@ -23,7 +23,6 @@
                   <widget class="GtkTreeView" id="allocationsTV">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <property name="headers_clickable">True</property>
                     <property name="rules_hint">True</property>
                     <property name="search_column">0</property>
                     <property name="enable_grid_lines">GTK_TREE_VIEW_GRID_LINES_BOTH</property>
@@ -119,7 +118,6 @@
                   <widget class="GtkTreeView" id="checksTV">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <property name="headers_clickable">True</property>
                     <property name="rules_hint">True</property>
                     <property name="search_column">0</property>
                     <property name="enable_grid_lines">GTK_TREE_VIEW_GRID_LINES_BOTH</property>
@@ -241,28 +239,29 @@
             <property name="n_rows">3</property>
             <property name="n_columns">2</property>
             <child>
-              <widget class="GtkEntry" id="amount">
+              <widget class="GtkLabel" id="lblDate">
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="text" translatable="yes">0.00</property>
+                <property name="label" translatable="yes">Date</property>
+              </widget>
+            </child>
+            <child>
+              <widget class="GtkLabel" id="lblName">
+                <property name="visible">True</property>
+                <property name="label" translatable="yes">Title</property>
               </widget>
               <packing>
-                <property name="left_attach">1</property>
-                <property name="right_attach">2</property>
-                <property name="top_attach">2</property>
-                <property name="bottom_attach">3</property>
+                <property name="top_attach">1</property>
+                <property name="bottom_attach">2</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkEntry" id="title">
+              <widget class="GtkLabel" id="lblAmount">
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="label" translatable="yes">Amount	</property>
               </widget>
               <packing>
-                <property name="left_attach">1</property>
-                <property name="right_attach">2</property>
-                <property name="top_attach">1</property>
-                <property name="bottom_attach">2</property>
+                <property name="top_attach">2</property>
+                <property name="bottom_attach">3</property>
               </packing>
             </child>
             <child>
@@ -279,30 +278,29 @@
               </packing>
             </child>
             <child>
-              <widget class="GtkLabel" id="lblAmount">
+              <widget class="GtkEntry" id="title">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">Amount	</property>
+                <property name="can_focus">True</property>
               </widget>
               <packing>
-                <property name="top_attach">2</property>
-                <property name="bottom_attach">3</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkLabel" id="lblName">
-                <property name="visible">True</property>
-                <property name="label" translatable="yes">Title</property>
-              </widget>
-              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
                 <property name="top_attach">1</property>
                 <property name="bottom_attach">2</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkLabel" id="lblDate">
+              <widget class="GtkEntry" id="amount">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">Date</property>
+                <property name="can_focus">True</property>
+                <property name="text" translatable="yes">0.00</property>
               </widget>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+                <property name="top_attach">2</property>
+                <property name="bottom_attach">3</property>
+              </packing>
             </child>
           </widget>
           <packing>
@@ -365,73 +363,32 @@
             <property name="n_rows">5</property>
             <property name="n_columns">2</property>
             <child>
-              <widget class="GtkEntry" id="check_no">
-                <property name="can_focus">True</property>
+              <widget class="GtkLabel" id="lblAEallocid">
+                <property name="visible">True</property>
+                <property name="label" translatable="yes">Allocation ID</property>
+              </widget>
+            </child>
+            <child>
+              <widget class="GtkEntry" id="AEallocid">
+                <property name="visible">True</property>
+                <property name="sensitive">False</property>
+                <property name="editable">False</property>
+                <property name="width_chars">5</property>
+                <property name="shadow_type">GTK_SHADOW_NONE</property>
               </widget>
               <packing>
                 <property name="left_attach">1</property>
                 <property name="right_attach">2</property>
-                <property name="top_attach">4</property>
-                <property name="bottom_attach">5</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkCheckButton" id="checkCheck">
+              <widget class="GtkLabel" id="lblDat">
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="label" translatable="yes">Check?</property>
-                <property name="response_id">0</property>
-                <property name="draw_indicator">True</property>
-                <signal name="toggled" handler="on_checkCheck_toggled"/>
+                <property name="label" translatable="yes">Date</property>
               </widget>
               <packing>
-                <property name="top_attach">4</property>
-                <property name="bottom_attach">5</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkEntry" id="AEname">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-              </widget>
-              <packing>
-                <property name="left_attach">1</property>
-                <property name="right_attach">2</property>
-                <property name="top_attach">2</property>
-                <property name="bottom_attach">3</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkEntry" id="AEamount">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="text" translatable="yes">0.00</property>
-              </widget>
-              <packing>
-                <property name="left_attach">1</property>
-                <property name="right_attach">2</property>
-                <property name="top_attach">3</property>
-                <property name="bottom_attach">4</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkLabel" id="lblAEAmount">
-                <property name="visible">True</property>
-                <property name="label" translatable="yes">Amount</property>
-              </widget>
-              <packing>
-                <property name="top_attach">3</property>
-                <property name="bottom_attach">4</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkLabel" id="lblAEname">
-                <property name="visible">True</property>
-                <property name="label" translatable="yes">Name</property>
-              </widget>
-              <packing>
-                <property name="top_attach">2</property>
-                <property name="bottom_attach">3</property>
+                <property name="top_attach">1</property>
+                <property name="bottom_attach">2</property>
               </packing>
             </child>
             <child>
@@ -450,33 +407,74 @@
               </packing>
             </child>
             <child>
-              <widget class="GtkLabel" id="lblDat">
+              <widget class="GtkLabel" id="lblAEname">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">Date</property>
+                <property name="label" translatable="yes">Name</property>
               </widget>
               <packing>
-                <property name="top_attach">1</property>
-                <property name="bottom_attach">2</property>
+                <property name="top_attach">2</property>
+                <property name="bottom_attach">3</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkEntry" id="AEallocid">
+              <widget class="GtkLabel" id="lblAEAmount">
                 <property name="visible">True</property>
-                <property name="sensitive">False</property>
-                <property name="editable">False</property>
-                <property name="width_chars">5</property>
-                <property name="shadow_type">GTK_SHADOW_NONE</property>
+                <property name="label" translatable="yes">Amount</property>
+              </widget>
+              <packing>
+                <property name="top_attach">3</property>
+                <property name="bottom_attach">4</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkEntry" id="AEamount">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="text" translatable="yes">0.00</property>
               </widget>
               <packing>
                 <property name="left_attach">1</property>
                 <property name="right_attach">2</property>
+                <property name="top_attach">3</property>
+                <property name="bottom_attach">4</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkLabel" id="lblAEallocid">
+              <widget class="GtkEntry" id="AEname">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">Allocation ID</property>
+                <property name="can_focus">True</property>
               </widget>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+                <property name="top_attach">2</property>
+                <property name="bottom_attach">3</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkCheckButton" id="checkCheck">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="label" translatable="yes">Check?</property>
+                <property name="response_id">0</property>
+                <property name="draw_indicator">True</property>
+                <signal name="toggled" handler="on_checkCheck_toggled"/>
+              </widget>
+              <packing>
+                <property name="top_attach">4</property>
+                <property name="bottom_attach">5</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkEntry" id="check_no">
+                <property name="can_focus">True</property>
+              </widget>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+                <property name="top_attach">4</property>
+                <property name="bottom_attach">5</property>
+              </packing>
             </child>
           </widget>
           <packing>
@@ -541,7 +539,6 @@
                   <widget class="GtkTreeView" id="expendituresView">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <property name="headers_clickable">True</property>
                   </widget>
                 </child>
                 <child>
@@ -650,70 +647,10 @@
             <property name="n_rows">4</property>
             <property name="n_columns">2</property>
             <child>
-              <widget class="GtkEntry" id="txtName">
+              <widget class="GtkLabel" id="lblDa">
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="label" translatable="yes">Date</property>
               </widget>
-              <packing>
-                <property name="left_attach">1</property>
-                <property name="right_attach">2</property>
-                <property name="top_attach">1</property>
-                <property name="bottom_attach">2</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkEntry" id="txtAmount">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-              </widget>
-              <packing>
-                <property name="left_attach">1</property>
-                <property name="right_attach">2</property>
-                <property name="top_attach">2</property>
-                <property name="bottom_attach">3</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkEntry" id="txtCheckNo">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-              </widget>
-              <packing>
-                <property name="left_attach">1</property>
-                <property name="right_attach">2</property>
-                <property name="top_attach">3</property>
-                <property name="bottom_attach">4</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkLabel" id="lblCheckNo">
-                <property name="visible">True</property>
-                <property name="label" translatable="yes">Check #</property>
-              </widget>
-              <packing>
-                <property name="top_attach">3</property>
-                <property name="bottom_attach">4</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkLabel" id="lblAmoun">
-                <property name="visible">True</property>
-                <property name="label" translatable="yes">Amount</property>
-              </widget>
-              <packing>
-                <property name="top_attach">2</property>
-                <property name="bottom_attach">3</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkLabel" id="lblNam">
-                <property name="visible">True</property>
-                <property name="label" translatable="yes">To</property>
-              </widget>
-              <packing>
-                <property name="top_attach">1</property>
-                <property name="bottom_attach">2</property>
-              </packing>
             </child>
             <child>
               <widget class="GtkCalendar" id="calDate">
@@ -729,10 +666,70 @@
               </packing>
             </child>
             <child>
-              <widget class="GtkLabel" id="lblDa">
+              <widget class="GtkLabel" id="lblNam">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">Date</property>
+                <property name="label" translatable="yes">To</property>
               </widget>
+              <packing>
+                <property name="top_attach">1</property>
+                <property name="bottom_attach">2</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkLabel" id="lblAmoun">
+                <property name="visible">True</property>
+                <property name="label" translatable="yes">Amount</property>
+              </widget>
+              <packing>
+                <property name="top_attach">2</property>
+                <property name="bottom_attach">3</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkLabel" id="lblCheckNo">
+                <property name="visible">True</property>
+                <property name="label" translatable="yes">Check #</property>
+              </widget>
+              <packing>
+                <property name="top_attach">3</property>
+                <property name="bottom_attach">4</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkEntry" id="txtCheckNo">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+              </widget>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+                <property name="top_attach">3</property>
+                <property name="bottom_attach">4</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkEntry" id="txtAmount">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+              </widget>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+                <property name="top_attach">2</property>
+                <property name="bottom_attach">3</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkEntry" id="txtName">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+              </widget>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+                <property name="top_attach">1</property>
+                <property name="bottom_attach">2</property>
+              </packing>
             </child>
           </widget>
           <packing>
@@ -761,6 +758,7 @@
                 <property name="label" translatable="yes">gtk-add</property>
                 <property name="use_stock">True</property>
                 <property name="response_id">0</property>
+                <signal name="clicked" handler="on_add"/>
               </widget>
               <packing>
                 <property name="position">1</property>

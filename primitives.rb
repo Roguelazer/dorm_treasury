@@ -3,10 +3,10 @@
 require 'date'
 
 class Allocation
-	attr_accessor :date, :name, :amount
+	attr_accessor :date, :name, :amount, :closed
 	attr_reader :allocid
 
-	def initialize(allocid, date, name, amount)
+	def initialize(allocid, date, name, amount, closed=false)
 		@allocid = allocid.to_i
 		if(date.is_a?(Date))
 			@date = date
@@ -15,10 +15,19 @@ class Allocation
 		end
 		@name = name.to_s
 		@amount = amount.to_f
+		if (closed == "0" || closed == 0 || closed == false)
+			@closed = false
+		else
+			@closed = true
+		end
 	end
 
 	def to_s
-		return "Allocation #{@allocid}: $#{@amount} for #{@name} on #{@date.to_s}"
+		if (closed)
+			return "Allocation #{@allocid}: closed (originally for ${@amount})"
+		else
+			return "Allocation #{@allocid}: $#{@amount} for #{@name} on #{@date.to_s}"
+		end
 	end
 end
 
