@@ -18,18 +18,37 @@ class Treasury
 	end
 
 	def sync_with_database()
+		if (@allocations_dirty)
+			# Sync to database
+		else
+			@allocations = []
+		end
+
+		if (@expenditures_dirty)
+			# Sync to database
+		else
+			@expenditures = []
+		end
 		@db.execute("SELECT ROWID,date,name,amount,closed from allocations") { |allocation|
 			@allocations.push(Allocation.new(allocation[0], allocation[1], allocation[2], allocation[3], allocation[4]))
 		}
-		@db.execute("SELECT ROWID,date,name,amount,allocid FROM expenditures") { |expenditure|
-			@expenditures.push(Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3]))
+		@db.execute("SELECT ROWID,date,name,amount,allocid,check_no FROM expenditures") { |expenditure|
+			if (expenditure[5].nil?)
+				@expenditures.push(Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3]))
+			else
+				cno = @db.get_first_row("SELECT check_no FROM checks WHERE ROWID=#{expenditure[5]}")[0]
+				@expenditures.push(Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3],cno))
+			end
 		}
 	end
 
 	def allocation(allocid)
-		a = @allocations.select { |item| item.allocid == allocid }
-		if (a.size != 1)
-			@stderr.puts "Error! Multiple identically-numbered allocations detected!"
+		a = @allocations.select { |item| item.allocid == allocid.to_i }
+		if (a.size == 0)
+			puts "No such allocation (#{allocid}) found"
+			return nil
+		elsif (a.size > 1)
+			STDERR.puts "Error! Multiple identically-numbered allocations detected!"
 			Kernel.exit(1)
 		end
 		return a[0]
@@ -39,9 +58,12 @@ class Treasury
 	end
 
 	def expenditure(expid)
-		e = @expenditures.select { |item| item.expid == expid }
-		if (e.size != 1)
-			@stderr.puts "Error! Multiple identically-numbered expenditures detected!"
+		e = @expenditures.select { |item| item.expid == expid.to_i }
+		if (e.size == 0)
+			puts "No such expenditure (##{expid}) found"
+			return nil
+		elsif (e.size > 1)
+			STDERR.puts "Error! Multiple identically-numbered expenditures detected!"
 			Kernel.exit(1)
 		end
 		return a[0]
@@ -67,15 +89,20 @@ class Treasury
 	end
 
 	def expenditures_for(allocid)
-		@db.execute("SELECT expenditures.ROWID,date,name,amount,expenditures.check_no FROM expenditures WHERE allocid=#{allocid}") { |expenditure|
-
-			if (expenditure[4].nil?)
-				yield Expenditure.new(expenditure[0], allocid, expenditure[1], expenditure[2], expenditure[3], nil)
-			else
-				cno = @db.get_first_row("SELECT check_no FROM checks WHERE ROWID=#{expenditure[4]}")[0]
-				yield Expenditure.new(expenditure[0],allocid,expenditure[1],expenditure[2],expenditure[3], cno)
+		@expenditures.each { |e|
+			if (e.allocid == allocid.to_i)
+				yield e
 			end
 		}
+		#@db.execute("SELECT expenditures.ROWID,date,name,amount,expenditures.check_no FROM expenditures WHERE allocid=#{allocid}") { |expenditure|
+		#
+		#	if (expenditure[4].nil?)
+		#		yield Expenditure.new(expenditure[0], allocid, expenditure[1], expenditure[2], expenditure[3], nil)
+		#	else
+		#		cno = @db.get_first_row("SELECT check_no FROM checks WHERE ROWID=#{expenditure[4]}")[0]
+		#		yield Expenditure.new(expenditure[0],allocid,expenditure[1],expenditure[2],expenditure[3], cno)
+		#	end
+		#}
 	end
 
 	def check(check_no)
@@ -89,7 +116,7 @@ class Treasury
 		@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID,expenditures.date FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID ORDER BY checks.check_no, date") { |e|
 			expenditure = @expenditures.select{|item| item.expid==e[0].to_i }
 			if (expenditure.size != 1)
-				@stderr.puts "Error; expenditures to checks is not 1-to-1"
+				STDERR.puts "Error; expenditures to checks is not 1-to-1"
 			else
 				yield Check.new(e[1], expenditure[0], e[2],e[3])
 			end
@@ -136,6 +163,7 @@ class Treasury
 		if (!allocid.nil?)
 			@db.execute("DELETE FROM allocations WHERE ROWID=#{allocid}")
 		end
+		@allocations.delete_if { |a| a.allocid == allocid.to_i } 
 	end
 
 	def delete_expenditure(expid)
@@ -146,6 +174,7 @@ class Treasury
 				end
 			}
 			@db.execute("DELETE FROM expenditures WHERE ROWID=#{expid}")
+			@expenditures.delete_if { |e| e.expid == expid.to_i }
 		end
 	end
 
@@ -154,6 +183,7 @@ class Treasury
 			@db.execute("SELECT ROWID from expenditures WHERE check_no=#{check_no}") {|e|
 				if (!e[0].nil?)
 					@db.execute("DELETE FROM expenditures WHERE ROWID=#{e[0]}")
+					@expenditures.delete_if { |e| e.expid == e[0] }
 				end
 			}
 			@db.execute("DELETE FROM checks WHERE check_no=#{check_no}")
@@ -161,15 +191,32 @@ class Treasury
 	end
 
 	def balance
-		return @db.get_first_row("SELECT sum(-amount) FROM expenditures")[0]
+		#return @db.get_first_row("SELECT sum(-amount) FROM expenditures")[0]
+		s = 0
+		@expenditures.each do |e|
+			s -= e.amount
+		end
+		return s
 	end
 
 	def total_allocations
-		return @db.get_first_row("SELECT sum(amount) FROM allocations")[0].to_f
+		#return @db.get_first_row("SELECT sum(amount) FROM allocations")[0].to_f
+		s = 0
+		@allocations.each do |a|
+			s += a.amount
+		end
+		return s
 	end
 
 	def total_open_allocations
-		return @db.get_first_row("SELECT sum(amount) FROM allocations WHERE closed=0")[0].to_f
+		#return @db.get_first_row("SELECT sum(amount) FROM allocations WHERE closed=0")[0].to_f
+		s = 0
+		@allocations.each do |a|
+			if (!a.closed)
+				s += a.amount
+			end
+		end
+		return s
 	end
 
 	def total_spent_for_allocations
@@ -177,7 +224,8 @@ class Treasury
 	end
 
 	def close_allocation(allocid)
-		@db.execute("UPDATE allocations SET closed=1 WHERE ROWID=#{allocid}");
+		@db.execute("UPDATE allocations SET closed=1 WHERE ROWID=#{allocid}")
+		@allocations.select { |a| a.allocid == allocid }[0].closed = true
 	end
 
 	private :sync_with_database

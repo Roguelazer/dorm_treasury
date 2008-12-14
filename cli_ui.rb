@@ -3,6 +3,8 @@
 require 'treasury'
 require 'readline'
 
+UI_VERSION=0.6
+
 # == Synopsis 
 #	This application is for managing the East Dorm treasury
 # 
@@ -103,8 +105,12 @@ class CLIInterface
 			else
 				print_checks(false)
 			end
-		when /^cash/
-			cash_check
+		when /^cash ?(\d*)/
+			if ($1.nil? || $1 == "")
+				cash_check(nil)
+			else
+				cash_check($1.to_i)
+			end
 		when /^ocheck/
 			other_check
 		when /^delcheck/
@@ -131,6 +137,9 @@ class CLIInterface
 				end
 			end
 			a = @treasury.allocation(allocid)
+			if (a.nil?)
+				return
+			end
 			puts "** Allocation ##{a.allocid} **"
 			puts "   Date: #{a.date}"
 			puts "   Title: #{a.name}"
@@ -162,7 +171,7 @@ class CLIInterface
 		end
 		puts "Total open allocations: $" + "%.2f" % @treasury.total_open_allocations
 		puts "Total spent: $#{spent}"
-		puts "Open allocated but unspent: $#{@treasury.total_open_allocations - spent}"
+		puts "Total promised: $#{@treasury.total_open_allocations - spent}"
 		puts "Current balance: $#{@treasury.balance}"
 	end
 
@@ -176,11 +185,7 @@ class CLIInterface
 		spent = 0
 		@treasury.expenditures_for(allocid) { |e| spent += e.amount }
 		a = @treasury.allocation(allocid)
-		if (a.closed)
-			return "Summary: (closed), spent $" + "%.2f" % spent + "/$" + "%.2f" % a.amount + " allocated"
-		else
-			return "Summary: Spent $" + "%.2f" % spent + " out of $" "%.2f" % @treasury.allocation(allocid).amount + " allocated."
-		end
+		return "Summary: Spent $" + "%.2f" % spent + "/$" "%.2f" % @treasury.allocation(allocid).amount + " allocated."
 	end
 
 	def print_help
@@ -192,8 +197,8 @@ class CLIInterface
 		puts "\tsummary [open]\t\tPrint summaries for all [open] allocations"
 		puts "\tprint [open]\t\tPrint allocations (optionally, only open allocations)"
 		puts "\tchecks [open]\t\tPrint all [open] checks"
-		puts "\tcash\t\t\tMark a check as cashed"
-		puts "\tinfo allocationid\tPrint information about [allocationid]"
+		puts "\tcash [check #]\t\tMark a check [check #] as cashed"
+		puts "\tinfo [allocationid]\tPrint information [about allocationid]"
 		puts "\tunallocate\t\tDelete an allocation"
 		puts "\tunexpend\t\tDelete an expenditure"
 		puts "\tdelcheck\t\tDelete a check"
@@ -204,6 +209,7 @@ class CLIInterface
 	end
 
 	def print_checks(open=false)
+		sum = 0
 		print "|-----------------------------------------------------------------------------------------|\n"
 		print "| Check |   Date     |             To                                  |  Amount  |Cashed?|\n"
 		print "|-----------------------------------------------------------------------------------------|\n"
@@ -211,6 +217,7 @@ class CLIInterface
 			if (open && check.cashed)
 				next
 			end
+			sum += check.expenditure.amount
 			print "| " + "%5d" % check.check_no + " "
 			print "| " + check.expenditure.date.to_s + " "
 			print "| " + check.expenditure.name.to_s[0..47]
@@ -231,6 +238,9 @@ class CLIInterface
 		balance = "$%8.2f" % @treasury.balance  
 		print "|                                                              Balance: #{balance}         |\n"
 		print "|-----------------------------------------------------------------------------------------|\n"
+		if (open)
+			puts "\t\tTotal outstanding checks: $" + "%.2f" % sum
+		end
 	end
 
 
@@ -310,11 +320,16 @@ class CLIInterface
 		print "|" + "-"*86 + "|\n"
 	end
 
-	def cash_check
+	def cash_check(check_no=nil)
 		catch :abort do
-			print_checks
-			input = get_input("Check #: ")
-			@treasury.cash_check(input)
+			if (check_no.nil?)
+				print_checks
+				check_no = get_input("Check #: ")
+			end
+			confirm = get_input "Mark check #{check_no} as cashed? (y/N) "
+			if (confirm[0,1].upcase == 'Y')
+				@treasury.cash_check(check_no)
+			end
 		end
 	end
 
@@ -326,7 +341,7 @@ class CLIInterface
 			end
 			title = get_input("Title  : ")
 			amount = get_input("Amount : ")
-			confirm = get_input("Add entry? (y/N ")
+			confirm = get_input("Add entry? (Y/n) ")
 			if (confirm.size == 0 || confirm[0,1].upcase == 'Y')
 				allocation = @treasury.add_allocation(date, name, amount)
 				puts "Allocation #{allocation.allocid} added"
@@ -407,6 +422,7 @@ class CLIInterface
 			e = @treasury.allocation(allocid)
 			confirm = get_input("Close #{e}? (y/N) ")
 			if (confirm[0, 1].upcase == 'Y')
+				puts "Closing"
 				@treasury.close_allocation(allocid)
 			end
 		end
@@ -436,8 +452,10 @@ class CLIInterface
 
 	# Main loop
 	def main
+		puts "Welcome to East Dorm Treasury v#{UI_VERSION}"
+		puts "Current balance: " + "$%.2f" % @treasury.balance
 		catch :abort do
-			while true
+			loop do
 				input = prompt
 				handle(input)
 			end
