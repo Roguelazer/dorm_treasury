@@ -56,7 +56,18 @@ class CLIInterface
 	end
 	
 	def process_args
-		@treasury = Treasury.new(ARGV[0])
+		if (ARGV.size == 0)
+			print_usage
+		end
+		case (ARGV[0])
+		when '-h': print_usage(true)
+		when '--help': print_usage(true)
+		when '-v': print_version; Kernel.exit(0)
+		when '--version': print_version; Kernel.exit(0)
+		else
+			print_usage(false) if !File.file?(ARGV[0])
+			@treasury = Treasury.new(ARGV[0])
+		end
 	end
 
 	def handle(input)
@@ -467,7 +478,23 @@ class CLIInterface
 		@treasury.close
 	end
 
-	private :get_input
+	def print_version
+		puts "East Dorm Treasury CLI v#{UI_VERSION}"
+	end
+
+	def print_usage(full=false)
+		print_version
+		puts "Usage:"
+		puts "\tcli.rb sqlite_db_file"
+		if(full)
+			puts "Arguments:"
+			puts "\t-h, --help\t\tPrint this help"
+			puts "\t-v, --version\t\tPrint version information"
+		end
+		Kernel.exit(0)
+	end
+
+	private :get_input, :at_exit, :print_usage, :print_version
 end
 
 c = CLIInterface.new(ARGV, STDIN)
