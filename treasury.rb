@@ -66,7 +66,7 @@ class Treasury
 			STDERR.puts "Error! Multiple identically-numbered expenditures detected!"
 			Kernel.exit(1)
 		end
-		return a[0]
+		return e[0]
 		#@db.execute("SELECT expenditures.allocid,expenditures.date,expenditures.name,expenditures.amount,expenditures.check_no,checks.check_no FROM expenditures,checks WHERE expenditures.ROWID=#{expid} AND checks.ROWID=expenditures.check_no") { |e|
 		#	return Expenditure.new(expid, e[0], e[1], e[2], e[3],e[4])
 		#}
@@ -197,6 +197,10 @@ class Treasury
 			s -= e.amount
 		end
 		return s
+	end
+
+	def checks_uncashed
+		return @db.get_first_row("SELECT SUM(expenditures.amount),expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID AND checks.cashed=0")[0]
 	end
 
 	def total_allocations
