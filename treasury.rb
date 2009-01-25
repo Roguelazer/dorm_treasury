@@ -73,6 +73,7 @@ class Treasury
 	end
 
 	def each_allocation(open_only=false)
+		@allocations.sort_by { |alloc| alloc.date }
 		if (open_only)
 			@allocations.each { |a|
 				if (!a.closed)
@@ -200,7 +201,11 @@ class Treasury
 	end
 
 	def checks_uncashed
-		return @db.get_first_row("SELECT SUM(expenditures.amount),expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID AND checks.cashed=0")[0]
+		return @db.get_first_row("SELECT SUM(expenditures.amount),expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID AND checks.cashed=0")[0].to_f
+	end
+
+	def checks_cashed
+		return @db.get_first_row("SELECT SUM(expenditures.amount),expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID AND checks.cashed=1")[0].to_f
 	end
 
 	def total_allocations
