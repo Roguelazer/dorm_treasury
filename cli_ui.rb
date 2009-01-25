@@ -220,7 +220,6 @@ class CLIInterface
 	end
 
 	def print_checks(open=false)
-		sum = 0
 		print "|-----------------------------------------------------------------------------------------|\n"
 		print "| Check |   Date     |             To                                  |  Amount  |Cashed?|\n"
 		print "|-----------------------------------------------------------------------------------------|\n"
@@ -228,7 +227,6 @@ class CLIInterface
 			if (open && check.cashed)
 				next
 			end
-			sum += check.expenditure.amount
 			print "| " + "%5d" % check.check_no + " "
 			print "| " + check.expenditure.date.to_s + " "
 			print "| " + check.expenditure.name.to_s[0..47]
@@ -248,10 +246,11 @@ class CLIInterface
 		print "|-----------------------------------------------------------------------------------------|\n"
 		balance = "$%8.2f" % @treasury.balance  
 		print "|                                                              Balance: #{balance}         |\n"
+		uncashed = "$%8.2f" % @treasury.checks_uncashed
+		delta = "$%8.2f" % -@treasury.checks_cashed
+		print "|                                                       Uncashed Total: #{uncashed}         |\n"
+		print "|                                                    Displayed Balance: #{delta}         |\n"
 		print "|-----------------------------------------------------------------------------------------|\n"
-		if (open)
-			puts "\t\tTotal outstanding checks: $" + "%.2f" % sum
-		end
 	end
 
 
