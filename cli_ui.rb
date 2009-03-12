@@ -353,7 +353,7 @@ class CLIInterface
 			amount = get_input("Amount : ")
 			confirm = get_input("Add entry? (Y/n) ")
 			if (confirm.size == 0 || confirm[0,1].upcase == 'Y')
-				allocation = @treasury.add_allocation(date, name, amount)
+				allocation = @treasury.add_allocation(date, title, amount)
 				puts "Allocation #{allocation.allocid} added"
 			else
 				puts "Allocation aborted"

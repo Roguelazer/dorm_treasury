@@ -233,8 +233,11 @@ class Treasury
 	end
 
 	def close_allocation(allocid)
+		if (allocation(allocid).closed)
+			return
+		end
+		allocation(allocid).closed = true
 		@db.execute("UPDATE allocations SET closed=1 WHERE ROWID=#{allocid}")
-		@allocations.select { |a| a.allocid == allocid }[0].closed = true
 	end
 
 	private :sync_with_database
