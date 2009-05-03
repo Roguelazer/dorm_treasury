@@ -39,10 +39,10 @@ class CLIInterface
 				return line
 			rescue EOFError
 				puts
-				Kernel.exit(0)
+				on_quit
 			end
 		end
-		Kernel.exit(0)
+		on_quit
 	end
 
 	# Get a line of input. Throws :abort if we should abort
@@ -90,9 +90,9 @@ class CLIInterface
 				print_allocations(false)
 			end
 		when /^quit/
-			Kernel.exit(0)
+			on_quit
 		when /^exit/
-			Kernel.exit(0)
+			on_quit
 		when /^unallocat/
 			unallocate
 		when /^unexpend/
@@ -116,6 +116,8 @@ class CLIInterface
 			else
 				print_checks(false)
 			end
+		when /^save/
+			save()
 		when /^cash ?(\d*)/
 			if ($1.nil? || $1 == "")
 				cash_check(nil)
@@ -214,6 +216,7 @@ class CLIInterface
 		puts "\tunexpend\t\tDelete an expenditure"
 		puts "\tdelcheck\t\tDelete a check"
 		puts "\tclose\t\t\tClose an allocation"
+		puts "\tsave\t\t\tSave the database"
 		puts "\texit\t\t\tExit the application"
 		puts
 		puts "Enter `ZRT` at any prompt to cancel"
@@ -470,11 +473,26 @@ class CLIInterface
 				handle(input)
 			end
 		end
+		on_quit()
+	end
+
+	def on_quit
+		if (@treasury.dirty?)
+			puts
+			puts "Unsaved changes detected..."
+			i = get_input("Action (Cancel/save/discard) > ")
+			if (i =~ /cancel/i)
+				return
+			elsif (i =~ /save/i)
+				@treasury.save
+			end
+		end
+		@treasury.close
 		Kernel.exit(0)
 	end
 
-	def at_exit
-		@treasury.close
+	def save
+		@treasury.save()
 	end
 
 	def print_version

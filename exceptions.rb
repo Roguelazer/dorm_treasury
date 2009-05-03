@@ -19,4 +19,3 @@ class DuplicateCheckError < RuntimeError
 		"Check ##{@check_no} has duplicates!"
 	end
 end
-

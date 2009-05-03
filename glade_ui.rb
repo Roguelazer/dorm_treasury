@@ -276,6 +276,30 @@ class GtkUiGlade
 	end
 
 	def on_quit
+		if (@treasury.dirty?)
+			querydialog = Gtk::MessageDialog.new(@window,
+												 Gtk::Dialog::DESTROY_WITH_PARENT,
+												 Gtk::MessageDialog::QUESTION,
+												 Gtk::MessageDialog::BUTTONS_NONE,
+												 "Unsaved changes found")
+			querydialog.add_buttons([Gtk::Stock::CANCEL, Gtk::Dialog::RESPONSE_CANCEL],
+									[Gtk::Stock::DISCARD, Gtk::Dialog::RESPONSE_NO],
+									[Gtk::Stock::SAVE, Gtk::Dialog::RESPONSE_YES])
+			querydialog.run do |response|
+				case response
+				when Gtk::Dialog::RESPONSE_CANCEL
+					querydialog.destroy
+					return
+				when Gtk::Dialog::RESPONSE_NO
+					break
+				when Gtk::Dialog::RESPONSE_YES
+					@treasury.save
+				else
+					puts "Unknown response detected?"
+				end
+			end
+			querydialog.destroy
+		end
 		@treasury.close
 		Gtk::main_quit
 	end
@@ -398,13 +422,10 @@ class GtkUiGlade
 	end
 
 	def toggle_active(box)
-		if(box.active?)
-			add_checks(true)
-			populate_list_box(true)
-		else
-			add_checks(false)
-			populate_list_box(false)
-		end
+		a = box.active?
+		add_checks(a)
+		populate_list_box(a)
+		update_alloc_summary(a)
 	end
 
 	def initialize_columns
@@ -430,9 +451,11 @@ class GtkUiGlade
 			if (closed == 1)
 				@treasury.allocation(allocid).closed = false
 				@listmodel.get_iter(path).set_value(5, 0)
+				@listmodel.get_iter(path).set_value(6, Pango::FontDescription::Style::NORMAL)
 			else
 				@treasury.allocation(allocid).closed = true
 				@listmodel.get_iter(path).set_value(5, 1)
+				@listmodel.get_iter(path).set_value(6, Pango::FontDescription::Style::ITALIC)
 			end
 		}
 		col = Gtk::TreeViewColumn.new("Open", renderer, :active => 5)
@@ -455,7 +478,7 @@ class GtkUiGlade
 		renderer = Gtk::CellRendererToggle.new
 		renderer.signal_connect("toggled") { |it,path|
 			cno=@checkslistmodel.get_iter(path).get_value(0)
-			ashed=@checkslistmodel.get_iter(path).get_value(4)
+			cashed=@checkslistmodel.get_iter(path).get_value(4)
 			if (cno != "deposit")
 				if (cashed == 1)
 					@treasury.check(cno).cashed = false
@@ -499,13 +522,13 @@ class GtkUiGlade
 
 	def update_checking_total
 		balance = @treasury.balance
-		@glade.get_widget("lblChecksSummary").text = "Current Available Balance: $#{balance}"
+		@glade.get_widget("lblChecksSummary").text = ("Current Available Balance: $%.2f" % balance)
 		balance
 	end
 
-	def update_alloc_summary
-		alloc = @treasury.total_allocations.to_f
-		spent = @treasury.total_spent_for_allocations.to_f
+	def update_alloc_summary(active_only = false)
+		alloc = @treasury.total_allocations(active_only).to_f
+		spent = @treasury.total_spent_for_allocations(active_only).to_f
 		@glade.get_widget("lblAllocSummary").text = ("Summary: $%.2f spent/$%.2f allocated" % [spent, alloc])
 		spent / alloc
 	end
@@ -520,9 +543,10 @@ class GtkUiGlade
 
 	# Called whenever the page is switched in the main view
 	def page_switched(widget, page, page_num)
+		a = @glade.get_widget("menu_active").active?
 		case page_num
 		when 0:
-			update_alloc_summary
+			update_alloc_summary(a)
 		when 1:
 			update_checking_total
 		end
@@ -530,6 +554,10 @@ class GtkUiGlade
 
 	def show_about
 		AboutDialog.new(@path, @window).show()
+	end
+
+	def save
+		@treasury.save
 	end
 end
 

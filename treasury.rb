@@ -9,37 +9,91 @@ class Treasury
 		@db = SQLite3::Database.new(filename)
 		@expenditures = []
 		@dirty_expenditures = []
+		@added_expenditures = []
+		@deleted_expenditures = []
 		@allocations = []
 		@dirty_allocations = []
+		@added_allocations = []
+		@deleted_allocations = []
 		@checks = []
 		@dirty_checks = []
+		@added_checks = []
+		@deleted_checks = []
 		read_db()
 	end
 
+	def dirty?
+		return !(@dirty_expenditures.empty? && @added_expenditures.empty? && 
+				@deleted_expenditures.empty? && @dirty_allocations.empty? &&
+				@added_allocations.empty? && @deleted_allocations.empty? &&
+				@dirty_checks.empty? && @added_checks.empty? && @deleted_checks.empty?)
+	end
+
 	def close
-		write_db
 		@db.close
 	end
 
-	def write_db
+	def next_allocid
+		@next_allocid += 1
+		return @next_allocid
+	end
+
+	def next_expid
+		@next_expid += 1
+		return @next_expid
+	end
+
+	def next_cid
+		@next_cid += 1
+		return @next_cid
+	end
+
+	def save
 		@dirty_allocations.each { |a|
 			@db.execute("UPDATE allocations SET date=?,name=?,amount=?,closed=? WHERE ROWID=?", a.date, a.name,
-					   a.amount, a.closed ? "1" : "0", a.allocid) { |res|
-			}
+					   a.amount, a.closed ? "1" : "0", a.allocid)
 		}
 		@dirty_allocations = []
 		@dirty_expenditures.each { |e|
 			@db.execute("UPDATE expenditures SET allocid=?,date=?,name=?,amount=? WHERE ROWID=?",
-					   e.allocid,e.date,e.name,e.amount,e.expid) { |res|
-			}
+					   e.allocid,e.date,e.name,e.amount,e.expid) 
 		}
 		@dirty_expenditures = []
 		@dirty_checks.each { |c|
 			@db.execute("UPDATE checks SET cashed=? WHERE check_no=?",
-						c.cashed, c.check_no) { |res|
-			}
+						c.cashed, c.check_no)
 		}
 		@dirty_checks = []
+		@added_allocations.each { |a|
+			@db.execute("INSERT INTO allocations (date, name, amount, closed, ROWID) VALUES(?,?,?,?,?)",
+						a.date, a.name, a.amount, a.closed ? "1" : "0", a.allocid)
+		}
+		@added_allocations = []
+		@added_expenditures.each { |e|
+			if (!e.check_no.nil?)
+				@db.execute("INSERT INTO expenditures (allocid, date, name, amount,check_no,ROWID) VALUES(?,?,?,?,?,?)", e.allocid, e.date, e.name, e.amount, checkid, e.expid)
+			else
+				@db.execute("INSERT INTO expenditures (allocid, date, name, amount, ROWID) VALUES(?,?,?,?,?)", e.allocid, e.date, e.name, e.amount)
+			end
+		}
+		@added_expenditures = []
+		@added_checks.each { |c|
+			@db.execute("INSERT INTO checks(check_no, cashed, ROWID) VALUES(?,?,?)",
+						c.check_no, c.cashed, c.cid)
+		}
+		@added_checks = []
+		@deleted_allocations.each { |a|
+			@db.execute("DELETE FROM allocations WHERE ROWID=#{a.allocid}")
+		}
+		@deleted_allocations = []
+		@deleted_expenditures.each { |e|
+			@db.execute("DELETE FROM expenditures WHERE ROWID=#{e.expid}")
+		}
+		@deleted_expenditures = []
+		@deleted_checks.each { |c|
+			@db.execute("DELETE FROM checks WHERE ROWID=#{c.cid}")
+		}
+		@deleted_checks = []
 	end
 
 	def read_db
@@ -69,6 +123,27 @@ class Treasury
 				@dirty_checks.push(c)
 			}
 			@checks.push(c)
+		}
+		@next_allocid = 0
+		@db.execute("SELECT max(ROWID) from allocations") { |r|
+			if (r.nil?)
+				break
+			end
+			@next_allocid += r[0].to_i
+		}
+		@next_expid = 0
+		@db.execute("SELECT max(ROWID) from expenditures") { |r|
+			if (r.nil?)
+				break
+			end
+			@next_expid += r[0].to_i
+		}
+		@next_cid = 0
+		@db.execute("SELECT max(ROWID) from checks") { |r|
+			if (r.nil?)
+				break
+			end
+			@next_cid += r[0].to_i
 		}
 	end
 
@@ -159,35 +234,35 @@ class Treasury
 	end
 
 	def add_allocation(date, name, amount, closed=false)
-		if (closed)
-			c = 1
-		else
-			c = 0
-		end
-		@db.execute("INSERT INTO allocations (date, name, amount, closed) VALUES('#{date}', '#{name}', #{amount}, #{c})")
-		allocid = @db.last_insert_row_id
-		allocation = Allocation.new(allocid, date, name, amount, closed)
+		allocid = next_allocid()
+		allocation = Allocation.new(allocid, date, name, amount, closed) { |a|
+			@dirty_allocations.push(a)
+		}
 		@allocations.push(allocation)
-		allocation
+		@added_allocations.push(allocation)
+		return allocation
 	end
 
 	def add_expenditure(allocid, date, name, amount, check_no = "NULL")
-		if (check_no != "NULL")
-			@db.execute("INSERT INTO checks (check_no, cashed) VALUES(#{check_no}, 0)")
-			checkid = @db.last_insert_row_id
-			@db.execute("INSERT INTO expenditures (allocid, date, name, amount,check_no) VALUES(#{allocid}, '#{date}', '#{name}', #{amount}, #{checkid})")
-		else
-			@db.execute("INSERT INTO expenditures (allocid, date, name, amount) VALUES(#{allocid}, '#{date}', '#{name}', #{amount})")
-		end
-		expid = @db.last_insert_row_id
+		expid = next_expid()
 		if (check_no == "NULL")
-			expenditure = Expenditure.new(expid, allocid, date, name, amount,nil)
+			expenditure = Expenditure.new(expid, allocid, date, name, amount,nil) { |e|
+				@dirty_expenditures.push(e)
+			}
 		else
-			expenditure = Expenditure.new(expid,allocid,date,name,amount,check_no)
+			expenditure = Expenditure.new(expid,allocid,date,name,amount,check_no) { |e|
+				@dirty_expenditures.push(e)
+			}
+			cid = next_cid()
+			c = Check.new(check_no, expid, allocid.to_i == -1 ? 1 : 0, cid) { |c|
+				@dirty_checks.push(c)
+			}
+			@checks.push(c)
+			@added_checks.push(c)
 		end
-		puts "Added expenditure #{expenditure}"
 		@expenditures.push(expenditure)
-		expenditure
+		@added_expenditures.push(expenditure)
+		return expenditure
 	end
 
 	def cash_check(check_no)
@@ -197,34 +272,34 @@ class Treasury
 
 	def delete_allocation(allocid)
 		if (!allocid.nil?)
-			@db.execute("DELETE FROM allocations WHERE ROWID=#{allocid}")
+			alloc = allocation(allocid)
+			@deleted_allocations.push(alloc)
+			@allocations.delete(alloc)
 		end
-		@allocations.delete_if { |a| a.allocid == allocid.to_i } 
 	end
 
 	def delete_expenditure(expid)
 		if (!expid.nil?)
-			@db.execute("SELECT check_no FROM expenditures WHERE ROWID=#{expid}") { |e|
-				if (!e[0].nil?)
-					@db.execute("DELETE FROM checks WHERE check_no=#{e[0]}")
-				end
-				@checks.delete_if { |c| c.check_no == e[0].to_i }
-			}
-			@db.execute("DELETE FROM expenditures WHERE ROWID=#{expid}")
-			@expenditures.delete_if { |e| e.expid == expid.to_i }
+			exp = expenditure(expid)
+			if (!exp.check_no.nil?)
+				c = check(check_no)
+				@deleted_checks.push(c)
+				@checks.delete(c)
+			end
+			@deleted_expenditures.push(exp)
+			@expenditures.delete(exp)
 		end
 	end
 
 	def delete_check(check_no)
 		if (!check_no.nil?)
-			@db.execute("SELECT ROWID from expenditures WHERE check_no=#{check_no}") {|e|
-				if (!e[0].nil?)
-					@db.execute("DELETE FROM expenditures WHERE ROWID=#{e[0]}")
-					@expenditures.delete_if { |e| e.expid == e[0] }
-				end
+			c = check(check_no)
+			(@expenditures.select { |e| e.check_no == check_no }).each { |e|
+				@deleted_expenditures.push(e)
+				@expenditures.delete(e)
 			}
-			@db.execute("DELETE FROM checks WHERE check_no=#{check_no}")
-			@checks.delete_if { |c| c.check_no == check_no.to_i }
+			@deleted_checks.push(c)
+			@checks.delete(c)
 		end
 	end
 
@@ -270,33 +345,28 @@ class Treasury
 		#return @db.get_first_row("SELECT SUM(expenditures.amount),expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID AND checks.cashed=1")[0].to_f
 	end
 
-	def total_allocations
+	def total_allocations(active_only=false)
 		#return @db.get_first_row("SELECT sum(amount) FROM allocations")[0].to_f
 		s = 0
 		@allocations.each do |a|
-			s += a.amount
-		end
-		return s
-	end
-
-	def total_open_allocations
-		#return @db.get_first_row("SELECT sum(amount) FROM allocations WHERE closed=0")[0].to_f
-		s = 0
-		@allocations.each do |a|
-			if (!a.closed)
+			if (!active_only || !a.closed)
 				s += a.amount
 			end
 		end
 		return s
 	end
 
-	def total_spent_for_allocations
+	def total_open_allocations
+		total_allocations(true)
+	end
+
+	def total_spent_for_allocations(active_only = false)
 		#return @db.get_first_row("SELECT SUM(expenditures.amount) FROM
 		#expenditures,allocations WHERE
 		#allocations.ROWID=expenditures.allocid")[0]
 		accum = 0.0
 		@expenditures.each { |e|
-			if (e.allocid != 0)
+			if (e.allocid > 0 && (!active_only || !allocation(e.allocid).closed))
 				accum += e.amount
 			end
 		}
@@ -311,6 +381,6 @@ class Treasury
 		#@db.execute("UPDATE allocations SET closed=1 WHERE ROWID=#{allocid}")
 	end
 
-	private :write_db, :read_db
+	private :read_db
 end
 

@@ -88,7 +88,7 @@ end
 class Check
 	extend Dirtyable
 	protected_attr :cashed
-	attr_reader :expenditure, :check_no
+	attr_reader :expenditure, :check_no, :cid
 
 	def initialize(number, expenditure, cashed, cid, &block)
 		@check_no = number.to_i
