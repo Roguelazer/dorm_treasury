@@ -27,6 +27,7 @@ class CheckNotFoundError < RuntimeError
 	end
 end
 
+
 class DuplicateCheckError < RuntimeError
 	def initialize(check_no)
 		@check_no = check_no
