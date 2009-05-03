@@ -1,4 +1,23 @@
-#!/usr/bin/env ruby
+#!/usr/bin/ruby
+# East Dorm Treasury GTK2 Interface
+#
+# Copyright (C) 2008-2009 James Brown <jbrown@cs.hmc.edu>
+#
+# This file is part of East Dorm Treasury.
+#
+# East Dorm Treasury is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# East Dorm Treasury is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with East Dorm Treasury.  If not, see <http://www.gnu.org/licenses/>.
+
 
 require 'libglade2'
 require 'treasury'
@@ -141,7 +160,12 @@ class AddCheck
 				amount = @glade.get_widget("txtAmount").text.to_f
 				dateargs = @glade.get_widget("calDate").date
 				date = Date.civil(dateargs[0], dateargs[1], dateargs[2])
-				check_no = @glade.get_widget("txtCheckNo").text.to_i
+				if (@glade.get_widget("chkDeposit").active?)
+					check_no = -1
+					amount = -amount
+				else
+					check_no = @glade.get_widget("txtCheckNo").text.to_i
+				end
 				expenditure = @treasury.add_expenditure(-1, date, name, amount, check_no)
 				dialog.destroy
 				return @treasury.check(expenditure.check_no)
@@ -150,6 +174,18 @@ class AddCheck
 			end
 			dialog.destroy
 			return nil
+		end
+	end
+
+	def chkDeposit_toggled(button)
+		if(button.active?)
+			@glade.get_widget("lblCheckNo").sensitive = false
+			@glade.get_widget("txtCheckNo").sensitive = false
+			@glade.get_widget("lblNam").text = "Title"
+		else
+			@glade.get_widget("lblCheckNo").sensitive = true
+			@glade.get_widget("txtCheckNo").sensitive = true
+			@glade.get_widget("lblNam").text = "To"
 		end
 	end
 end
@@ -199,8 +235,10 @@ class AllocationInfo
 		renderer = Gtk::CellRendererText.new
 		col = Gtk::TreeViewColumn.new("Check #", renderer, :text => 4)
 		ev.append_column(col)
+		@glade.get_widget("AIbtnCloseAllocation").label = @treasury.allocation(@allocid).closed ? "Re-open Allocation" : "Close Allocation"
 		expenditures.title = "Allocation Info for ##{allocid}"
 		expenditures.run do |response|
+			yield response
 			expenditures.destroy
 		end
 	end
@@ -213,7 +251,8 @@ class AllocationInfo
 	end
 
 	def AIbtnCloseAllocation_clicked_cb
-		@glade.get_widget("allocationInfo").response(Gtk::Dialog::RESPONSE_ACCEPT)
+		@treasury.allocation(@allocid).closed = !@treasury.allocation(@allocid).closed
+		@glade.get_widget("AIbtnCloseAllocation").label = @treasury.allocation(@allocid).closed ? "Re-open Allocation" : "Close Allocation"
 	end
 
 	def on_AIbtnDelExpenditure_clicked
@@ -322,6 +361,8 @@ class GtkUiGlade
 												 Gtk::MessageDialog::ERROR,
 												 Gtk::MessageDialog::BUTTONS_CLOSE,
 												 "No allocation selected")
+			errordialog.run
+			errordialog.destroy
 			return
 		else
 			allocid = selection[0]
@@ -337,9 +378,8 @@ class GtkUiGlade
 		}
 		update_alloc_summary
 		@allocationslist.selection.selected[4] = spent.to_s
-		if (!expenditure.check_no.nil?)
-			c = @treasury.check(expenditure.check_no)
-			puts c
+		if (!expenditure.cid.nil?)
+			c = @treasury.check_by_cid(expenditure.cid)
 			add_check(c)
 			update_checking_total
 		end
@@ -353,13 +393,17 @@ class GtkUiGlade
 												 Gtk::MessageDialog::ERROR,
 												 Gtk::MessageDialog::BUTTONS_CLOSE,
 												 "No allocation selected")
-			errordialog.show
+			errordialog.run
+			errordialog.destroy
 			return
 		else
 			allocid = selection[0].to_i
 		end
 		a = AllocationInfo.new(@treasury, @path)
-		a.show(allocid)
+		a.show(allocid) { |response|
+		}
+		selection[5] = @treasury.allocation(allocid).closed ? 1 : 0
+		selection[6] = @treasury.allocation(allocid).closed ? Pango::FontDescription::Style::ITALIC : Pango::FontDescription::Style::NORMAL
 		spent = 0
 		@treasury.expenditures_for(allocid) { |e| spent += e.amount }
 		selection[4] = "%8.2f" % spent
@@ -406,7 +450,7 @@ class GtkUiGlade
 		end
 		row[1] = c.expenditure.date.to_s
 		row[2] = c.expenditure.name.to_s
-		row[3] = "$%8.2f" % c.expenditure.amount.to_s
+		row[3] = "$%8.2f" % (row[0] == "deposit" ? -c.expenditure.amount : c.expenditure.amount)
 		if (c.cashed)
 			row[4] = 1
 		else
@@ -418,7 +462,7 @@ class GtkUiGlade
 	def add_checks(active_only=false)
 		@checkslistmodel.clear
 		@treasury.each_check { |c|
-			if (!active_only || !c.cashed)
+			if (!active_only || (c.check_no > 0 && !c.cashed))
 				add_check(c)
 			end
 		}
@@ -461,7 +505,7 @@ class GtkUiGlade
 				@listmodel.get_iter(path).set_value(6, Pango::FontDescription::Style::ITALIC)
 			end
 		}
-		col = Gtk::TreeViewColumn.new("Open", renderer, :active => 5)
+		col = Gtk::TreeViewColumn.new("Closed", renderer, :active => 5)
 		@allocationslist.append_column(col)
 	end
 
@@ -497,8 +541,14 @@ class GtkUiGlade
 		selection = @glade.get_widget("allocationsTV").selection.selected
 		if (!selection.nil?)
 			allocid = selection[0].to_i
-			@treasury.delete_allocation(allocid)
-			@listmodel.remove(selection)
+			deleted = @treasury.delete_allocation(allocid)
+			deleted.each { |i|
+				if (i.is_a?(Check))
+					del_check_from_model(i)
+				elsif (i.is_a?(Allocation))
+					del_alloc_from_model(i)
+				end
+			}
 		end
 	end
 

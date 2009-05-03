@@ -1,5 +1,22 @@
-#!/usr/bin/ruby
-
+# East Dorm Treasury Treasury Model
+#
+# Copyright (C) 2008-2009 James Brown <jbrown@cs.hmc.edu>
+#
+# This file is part of East Dorm Treasury.
+#
+# East Dorm Treasury is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# East Dorm Treasury is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with East Dorm Treasury.  If not, see <http://www.gnu.org/licenses/>.
+#
 require 'sqlite3'
 require 'primitives'
 require 'exceptions'
@@ -60,7 +77,6 @@ class Treasury
 		}
 		@dirty_expenditures = Hash.new
 		@dirty_checks.each { |c,val|
-			puts "Writing back #{c}"
 			@db.execute("UPDATE checks SET cashed=? WHERE ROWID=?",
 						c.cashed ? "1" : "0", c.cid)
 		}
@@ -72,7 +88,7 @@ class Treasury
 		@added_allocations = []
 		@added_expenditures.each { |e|
 			if (!e.check_no.nil?)
-				@db.execute("INSERT INTO expenditures (allocid, date, name, amount,check_no,ROWID) VALUES(?,?,?,?,?,?)", e.allocid, e.date, e.name, e.amount, checkid, e.expid)
+				@db.execute("INSERT INTO expenditures (allocid, date, name, amount,check_no,ROWID) VALUES(?,?,?,?,?,?)", e.allocid, e.date, e.name, e.amount, e.cid, e.expid)
 			else
 				@db.execute("INSERT INTO expenditures (allocid, date, name, amount, ROWID) VALUES(?,?,?,?,?)", e.allocid, e.date, e.name, e.amount)
 			end
@@ -106,13 +122,13 @@ class Treasury
 		}
 		@db.execute("SELECT ROWID,date,name,amount,allocid,check_no FROM expenditures") { |expenditure|
 			if (expenditure[5].nil?)
-				e = Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3], nil) { |e|
+				e = Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3], nil, nil) { |e|
 					@dirty_expenditures[e] = true
 				}
 				@expenditures.push(e)
 			else
-				cno = @db.get_first_row("SELECT check_no FROM checks WHERE ROWID=#{expenditure[5]}")[0]
-				e = Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3],cno) { |e|
+				cno = @db.get_first_row("SELECT check_no FROM checks WHERE ROWID=?", expenditure[5])[0]
+				e = Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3],cno, expenditure[5]) { |e|
 					@dirty_expenditures[e] = true
 				}
 				@expenditures.push(e)
@@ -257,14 +273,14 @@ class Treasury
 	def add_expenditure(allocid, date, name, amount, check_no = "NULL")
 		expid = next_expid()
 		if (check_no == "NULL")
-			expenditure = Expenditure.new(expid, allocid, date, name, amount,nil) { |e|
+			expenditure = Expenditure.new(expid, allocid, date, name, amount,nil,nil) { |e|
 				@dirty_expenditures[e] = true
 			}
 		else
-			expenditure = Expenditure.new(expid,allocid,date,name,amount,check_no) { |e|
+			cid = next_cid()
+			expenditure = Expenditure.new(expid,allocid,date,name,amount,check_no,cid) { |e|
 				@dirty_expenditures[e] = true
 			}
-			cid = next_cid()
 			c = Check.new(check_no, expenditure, allocid.to_i == -1 ? 1 : 0, cid) { |c|
 				@dirty_checks[c] = true
 			}
@@ -283,22 +299,35 @@ class Treasury
 
 	def delete_allocation(allocid)
 		if (!allocid.nil?)
+			ret = []
 			alloc = allocation(allocid)
+			expenditures_for(allocid) { |e|
+				ret += delete_expenditure(e.expid)
+			}
 			@deleted_allocations.push(alloc)
 			@allocations.delete(alloc)
+			ret.push(alloc)
+			return ret
 		end
 	end
 
 	def delete_expenditure(expid)
 		if (!expid.nil?)
+			ret = []
 			exp = expenditure(expid)
 			if (!exp.check_no.nil?)
-				c = check(exp.check_no)
-				@deleted_checks.push(c)
-				@checks.delete(c)
+				begin
+					c = check(exp.check_no)
+					@deleted_checks.push(c)
+					@checks.delete(c)
+					ret.push(c)
+				rescue DuplicateCheckError => e
+				end
 			end
 			@deleted_expenditures.push(exp)
 			@expenditures.delete(exp)
+			ret.push(exp)
+			return ret
 		end
 	end
 
