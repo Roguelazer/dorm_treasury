@@ -103,10 +103,14 @@ class Check
 	end
 
 	def to_s
-		"Check ##{check_no}: $#{expenditure.amount} to #{expenditure.name}"
+		"Check ##{check_no}: $#{expenditure.amount} to #{expenditure.name}" + (@cashed ? " (Cashed)" : "")
 	end
 
 	def add_listener(&block)
 		@listeners.push(block)
+	end
+
+	def deposit?
+		return (@check_no == -1)
 	end
 end

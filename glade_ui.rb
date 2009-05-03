@@ -265,7 +265,7 @@ class GtkUiGlade
 		@allocationslist.model = @listmodel
 		initialize_columns
 
-		@checkslistmodel = Gtk::ListStore.new(String, String, String, String, Integer, Integer, Integer)
+		@checkslistmodel = Gtk::ListStore.new(String, String, String, String, Integer, Integer, Integer, Integer)
 		add_checks
 		@checkslist = @glade.get_widget("checksTV")
 		@checkslist.selection.mode = Gtk::SELECTION_SINGLE
@@ -338,7 +338,9 @@ class GtkUiGlade
 		update_alloc_summary
 		@allocationslist.selection.selected[4] = spent.to_s
 		if (!expenditure.check_no.nil?)
-			add_check(@treasury.check(expenditure.check_no))
+			c = @treasury.check(expenditure.check_no)
+			puts c
+			add_check(c)
 			update_checking_total
 		end
 	end
@@ -410,6 +412,7 @@ class GtkUiGlade
 		else
 			row[4] = 0
 		end
+		row[7] = c.cid
 	end
 	
 	def add_checks(active_only=false)
@@ -477,16 +480,13 @@ class GtkUiGlade
 		@checkslist.append_column(col)
 		renderer = Gtk::CellRendererToggle.new
 		renderer.signal_connect("toggled") { |it,path|
-			cno=@checkslistmodel.get_iter(path).get_value(0)
-			cashed=@checkslistmodel.get_iter(path).get_value(4)
-			if (cno != "deposit")
-				if (cashed == 1)
-					@treasury.check(cno).cashed = false
-					@checkslistmodel.get_iter(path).set_value(4, 0)
-				else
-					@treasury.check(cno).cashed = true
-					@checkslistmodel.get_iter(path).set_value(4, 1)
-				end
+			i = @checkslistmodel.get_iter(path)
+			cid=i.get_value(7)
+			cashed=i.get_value(4)
+			check = @treasury.check_by_cid(cid)
+			if (!check.deposit?)
+				check.cashed = !check.cashed
+				i.set_value(4, (cashed + 1) % 2)
 			end
 		}
 		col = Gtk::TreeViewColumn.new("Cashed", renderer, :active => 4, :activatable => 5, :inconsistent => 6)
@@ -514,10 +514,50 @@ class GtkUiGlade
 	def btnDeleteCheckClicked
 		selection = @glade.get_widget("checksTV").selection.selected
 		if (!selection.nil?)
-			check_no = selection[0].to_i
-			@treasury.delete_check(check_no)
-			@checkslistmodel.remove(selection)
+			cid = selection[7].to_i
+			deleted = @treasury.delete_check_by_cid(cid)
+			deleted.each { |i|
+				if (i.is_a?(Check))
+					del_check_from_model(i)
+				elsif(i.is_a?(Expenditure))
+					del_exp_from_model(i)
+				else
+					puts i.class
+				end
+			}
 		end
+	end
+
+	def del_check_from_model(c)
+		@checkslistmodel.each { |model,path,iter|
+			if (iter.get_value(7).to_i == c.cid)
+				model.remove(iter)
+				model.row_deleted(path)
+			end
+		}
+		update_checking_total()
+	end
+
+	def del_alloc_from_model(a)
+		@listmodel.each { |model,path,iter|
+			if (iter.get_value(0).to_i == a.allocid)
+				model.remove(iter)
+				model.row_deleted(path)
+			end
+		}
+		update_alloc_summary()
+	end
+
+	def del_exp_from_model(e)
+		@listmodel.each { |model,path,iter|
+			if (iter.get_value(0).to_i == e.allocid)
+				spent = 0
+				@treasury.expenditures_for(e.allocid) { |x| spent += x.amount }
+				iter.set_value(4, "%8.2f" % spent.to_f)
+				model.row_changed(path, iter)
+			end
+		}
+		update_alloc_summary()
 	end
 
 	def update_checking_total
@@ -559,6 +599,8 @@ class GtkUiGlade
 	def save
 		@treasury.save
 	end
+
+	private :del_check_from_model, :del_exp_from_model, :del_alloc_from_model
 end
 
 # Main program

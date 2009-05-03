@@ -8,15 +8,15 @@ class Treasury
 	def initialize(filename)
 		@db = SQLite3::Database.new(filename)
 		@expenditures = []
-		@dirty_expenditures = []
+		@dirty_expenditures = Hash.new
 		@added_expenditures = []
 		@deleted_expenditures = []
 		@allocations = []
-		@dirty_allocations = []
+		@dirty_allocations = Hash.new
 		@added_allocations = []
 		@deleted_allocations = []
 		@checks = []
-		@dirty_checks = []
+		@dirty_checks = Hash.new
 		@added_checks = []
 		@deleted_checks = []
 		read_db()
@@ -49,21 +49,22 @@ class Treasury
 	end
 
 	def save
-		@dirty_allocations.each { |a|
+		@dirty_allocations.each { |a,val|
 			@db.execute("UPDATE allocations SET date=?,name=?,amount=?,closed=? WHERE ROWID=?", a.date, a.name,
 					   a.amount, a.closed ? "1" : "0", a.allocid)
 		}
-		@dirty_allocations = []
-		@dirty_expenditures.each { |e|
+		@dirty_allocations = Hash.new
+		@dirty_expenditures.each { |e,val|
 			@db.execute("UPDATE expenditures SET allocid=?,date=?,name=?,amount=? WHERE ROWID=?",
 					   e.allocid,e.date,e.name,e.amount,e.expid) 
 		}
-		@dirty_expenditures = []
-		@dirty_checks.each { |c|
-			@db.execute("UPDATE checks SET cashed=? WHERE check_no=?",
-						c.cashed, c.check_no)
+		@dirty_expenditures = Hash.new
+		@dirty_checks.each { |c,val|
+			puts "Writing back #{c}"
+			@db.execute("UPDATE checks SET cashed=? WHERE ROWID=?",
+						c.cashed ? "1" : "0", c.cid)
 		}
-		@dirty_checks = []
+		@dirty_checks = Hash.new
 		@added_allocations.each { |a|
 			@db.execute("INSERT INTO allocations (date, name, amount, closed, ROWID) VALUES(?,?,?,?,?)",
 						a.date, a.name, a.amount, a.closed ? "1" : "0", a.allocid)
@@ -98,29 +99,29 @@ class Treasury
 
 	def read_db
 		@db.execute("SELECT ROWID,date,name,amount,closed from allocations") { |allocation|
-			a = Allocation.new(allocation[0], allocation[1], allocation[2], allocation[3], allocation[4]) { 
-				@dirty_allocations.push(a)
+			a = Allocation.new(allocation[0], allocation[1], allocation[2], allocation[3], allocation[4]) { |a|
+				@dirty_allocations[a] = true
 			}
 			@allocations.push(a)
 		}
 		@db.execute("SELECT ROWID,date,name,amount,allocid,check_no FROM expenditures") { |expenditure|
 			if (expenditure[5].nil?)
-				e = Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3], nil) {
-					@dirty_expenditures.push(e)
+				e = Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3], nil) { |e|
+					@dirty_expenditures[e] = true
 				}
 				@expenditures.push(e)
 			else
 				cno = @db.get_first_row("SELECT check_no FROM checks WHERE ROWID=#{expenditure[5]}")[0]
-				e = Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3],cno) {
-					@dirty_expenditures.push(e)
+				e = Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3],cno) { |e|
+					@dirty_expenditures[e] = true
 				}
 				@expenditures.push(e)
 			end
 		}
 		@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID") { |e|
 			expenditure = @expenditures.select{|item| item.expid==e[0].to_i }
-			c = Check.new(e[1],expenditure[0],e[2],e[3]) {
-				@dirty_checks.push(c)
+			c = Check.new(e[1],expenditure[0],e[2],e[3]) { |c|
+				@dirty_checks[c] = true
 			}
 			@checks.push(c)
 		}
@@ -221,6 +222,16 @@ class Treasury
 		return c[0]
 	end
 
+	def check_by_cid(cid)
+		c = @checks.select { |i| i.cid == cid }
+		if (c.size == 0)
+			raise CheckNotFoundError.new(cid)
+		elsif (c.size > 1)
+			raise DuplicateCheckError.new(cid)
+		end
+		return c[0]
+	end
+
 	def each_check
 		@checks.each { |c| yield c }
 		#@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID,expenditures.date FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID ORDER BY checks.check_no, date") { |e|
@@ -236,7 +247,7 @@ class Treasury
 	def add_allocation(date, name, amount, closed=false)
 		allocid = next_allocid()
 		allocation = Allocation.new(allocid, date, name, amount, closed) { |a|
-			@dirty_allocations.push(a)
+			@dirty_allocations[a] = true
 		}
 		@allocations.push(allocation)
 		@added_allocations.push(allocation)
@@ -247,15 +258,15 @@ class Treasury
 		expid = next_expid()
 		if (check_no == "NULL")
 			expenditure = Expenditure.new(expid, allocid, date, name, amount,nil) { |e|
-				@dirty_expenditures.push(e)
+				@dirty_expenditures[e] = true
 			}
 		else
 			expenditure = Expenditure.new(expid,allocid,date,name,amount,check_no) { |e|
-				@dirty_expenditures.push(e)
+				@dirty_expenditures[e] = true
 			}
 			cid = next_cid()
-			c = Check.new(check_no, expid, allocid.to_i == -1 ? 1 : 0, cid) { |c|
-				@dirty_checks.push(c)
+			c = Check.new(check_no, expenditure, allocid.to_i == -1 ? 1 : 0, cid) { |c|
+				@dirty_checks[c] = true
 			}
 			@checks.push(c)
 			@added_checks.push(c)
@@ -282,7 +293,7 @@ class Treasury
 		if (!expid.nil?)
 			exp = expenditure(expid)
 			if (!exp.check_no.nil?)
-				c = check(check_no)
+				c = check(exp.check_no)
 				@deleted_checks.push(c)
 				@checks.delete(c)
 			end
@@ -293,13 +304,35 @@ class Treasury
 
 	def delete_check(check_no)
 		if (!check_no.nil?)
+			ret = []
 			c = check(check_no)
-			(@expenditures.select { |e| e.check_no == check_no }).each { |e|
+			e = c.expenditure
+			if (!e.nil?)
 				@deleted_expenditures.push(e)
 				@expenditures.delete(e)
-			}
+				ret.push(e)
+			end
 			@deleted_checks.push(c)
 			@checks.delete(c)
+			ret.push(c)
+			return ret
+		end
+	end
+
+	def delete_check_by_cid(cid)
+		if (!cid.nil?)
+			ret = []
+			c = check_by_cid(cid)
+			e = c.expenditure
+			if (!e.nil?)
+				@deleted_expenditures.push(e)
+				@expenditures.delete(e)
+				ret.push(e)
+			end
+			@deleted_checks.push(c)
+			@checks.delete(c)
+			ret.push(c)
+			return ret
 		end
 	end
 
