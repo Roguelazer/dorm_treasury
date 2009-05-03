@@ -94,6 +94,26 @@ class AddExpenditure
 	end
 end
 
+class AboutDialog
+	include GetText
+
+	def initialize(path, parent)
+		@path = path
+		bindtextdomain(nil, nil, nil, "UTF-8")
+		@glade = GladeXML.new(@path, "aboutDT") { |h| method(h) }
+		@parent = parent
+	end
+
+	def show
+		dialog = @glade.get_widget("aboutDT")
+		dialog.signal_connect("response") {
+			dialog.destroy()
+		}
+		dialog.show
+	end
+end
+
+
 class AddCheck
 	include GetText
 
@@ -156,7 +176,7 @@ class AllocationInfo
 			row[0] = e.expid
 			row[1] = e.date.to_s
 			row[2] = e.name
-			row[3] = e.amount
+			row[3] = e.amount.to_f
 			if (e.check_no == nil)
 				row[4] = "Cash"
 			else
@@ -238,14 +258,14 @@ class GtkUiGlade
 		@glade = GladeXML.new(path_or_data, "MainWindow", domain, localedir, flag) {|handler| method(handler)}
 		@window = @glade.get_widget("MainWindow")
 		@expglade = @glade
-		@listmodel = Gtk::ListStore.new(Integer, String, String, String, String)
+		@listmodel = Gtk::ListStore.new(Integer, String, String, String, String, Integer, Pango::FontDescription::Style)
 		populate_list_box
 		@allocationslist = @glade.get_widget("allocationsTV")
 		@allocationslist.selection.mode = Gtk::SELECTION_SINGLE
 		@allocationslist.model = @listmodel
 		initialize_columns
 
-		@checkslistmodel = Gtk::ListStore.new(String, String, String, String, Integer)
+		@checkslistmodel = Gtk::ListStore.new(String, String, String, String, Integer, Integer, Integer)
 		add_checks
 		@checkslist = @glade.get_widget("checksTV")
 		@checkslist.selection.mode = Gtk::SELECTION_SINGLE
@@ -329,20 +349,34 @@ class GtkUiGlade
 		spent = 0
 		@treasury.expenditures_for(allocation.allocid) { |e| spent += e.amount }
 		row[4] = "%8.2f" % spent.to_f
+		if (allocation.closed)
+			row[5] = 1
+			row[6] = Pango::FontDescription::Style::ITALIC
+		else
+			row[5] = 0
+			row[6] = Pango::FontDescription::Style::NORMAL
+		end
 	end
 
-	def populate_list_box
+	def populate_list_box(active_only = false)
 		@listmodel.clear
 		@treasury.each_allocation {|a|
-			add_alloc_to_listmodel(a)
+			if (!active_only || !a.closed)
+				add_alloc_to_listmodel(a)
+			end
 		}
 	end
 
 	def add_check(c)
 		row = @checkslistmodel.append
-		row[0] = c.check_no
+		row[0] = c.check_no.to_s
 		if (row[0] == "-1")
 			row[0] = "deposit"
+			row[5] = 0
+			row[6] = 1
+		else
+			row[5] = 1
+			row[6] = 0
 		end
 		row[1] = c.expenditure.date.to_s
 		row[2] = c.expenditure.name.to_s
@@ -354,11 +388,23 @@ class GtkUiGlade
 		end
 	end
 	
-	def add_checks
+	def add_checks(active_only=false)
 		@checkslistmodel.clear
 		@treasury.each_check { |c|
-			add_check(c)
+			if (!active_only || !c.cashed)
+				add_check(c)
+			end
 		}
+	end
+
+	def toggle_active(box)
+		if(box.active?)
+			add_checks(true)
+			populate_list_box(true)
+		else
+			add_checks(false)
+			populate_list_box(false)
+		end
 	end
 
 	def initialize_columns
@@ -366,16 +412,30 @@ class GtkUiGlade
 		col = Gtk::TreeViewColumn.new("Allocation ID", renderer, :text => 0)
 		@allocationslist.append_column(col)
 		renderer = Gtk::CellRendererText.new
-		col = Gtk::TreeViewColumn.new("Date", renderer, :text => 1)
+		col = Gtk::TreeViewColumn.new("Date", renderer, :text => 1, :style=>6)
 		@allocationslist.append_column(col)
 		renderer = Gtk::CellRendererText.new
-		col = Gtk::TreeViewColumn.new("Title", renderer, :text => 2)
+		col = Gtk::TreeViewColumn.new("Title", renderer, :text => 2, :style=>6)
 		@allocationslist.append_column(col)
 		renderer = Gtk::CellRendererText.new
 		col = Gtk::TreeViewColumn.new("Amount Allocated", renderer, :text => 3)
 		@allocationslist.append_column(col)
 		renderer = Gtk::CellRendererText.new
 		col = Gtk::TreeViewColumn.new("Amount Spent", renderer, :text => 4)
+		@allocationslist.append_column(col)
+		renderer = Gtk::CellRendererToggle.new
+		renderer.signal_connect("toggled") { |it, path|
+			allocid = @listmodel.get_iter(path).get_value(0)
+			closed = @listmodel.get_iter(path).get_value(5)
+			if (closed == 1)
+				@treasury.allocation(allocid).closed = false
+				@listmodel.get_iter(path).set_value(5, 0)
+			else
+				@treasury.allocation(allocid).closed = true
+				@listmodel.get_iter(path).set_value(5, 1)
+			end
+		}
+		col = Gtk::TreeViewColumn.new("Open", renderer, :active => 5)
 		@allocationslist.append_column(col)
 	end
 
@@ -393,7 +453,20 @@ class GtkUiGlade
 		col = Gtk::TreeViewColumn.new("Amount", renderer, :text => 3)
 		@checkslist.append_column(col)
 		renderer = Gtk::CellRendererToggle.new
-		col = Gtk::TreeViewColumn.new("Cashed", renderer, :active => 4)
+		renderer.signal_connect("toggled") { |it,path|
+			cno=@checkslistmodel.get_iter(path).get_value(0)
+			ashed=@checkslistmodel.get_iter(path).get_value(4)
+			if (cno != "deposit")
+				if (cashed == 1)
+					@treasury.check(cno).cashed = false
+					@checkslistmodel.get_iter(path).set_value(4, 0)
+				else
+					@treasury.check(cno).cashed = true
+					@checkslistmodel.get_iter(path).set_value(4, 1)
+				end
+			end
+		}
+		col = Gtk::TreeViewColumn.new("Cashed", renderer, :active => 4, :activatable => 5, :inconsistent => 6)
 		@checkslist.append_column(col)
 	end
 
@@ -436,7 +509,15 @@ class GtkUiGlade
 		@glade.get_widget("lblAllocSummary").text = ("Summary: $%.2f spent/$%.2f allocated" % [spent, alloc])
 		spent / alloc
 	end
-	
+
+	def on_menu_allocations_activate
+		@glade.get_widget("notebookMain").page=0
+	end
+
+	def on_menu_checks_activate
+		@glade.get_widget("notebookMain").page=1
+	end
+
 	# Called whenever the page is switched in the main view
 	def page_switched(widget, page, page_num)
 		case page_num
@@ -445,6 +526,10 @@ class GtkUiGlade
 		when 1:
 			update_checking_total
 		end
+	end
+
+	def show_about
+		AboutDialog.new(@path, @window).show()
 	end
 end
 
