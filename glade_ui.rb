@@ -450,7 +450,7 @@ class GtkUiGlade
 		end
 		row[1] = c.expenditure.date.to_s
 		row[2] = c.expenditure.name.to_s
-		row[3] = "$%8.2f" % (row[0] == "deposit" ? -c.expenditure.amount : c.expenditure.amount)
+		row[3] = (row[0] == "deposit") ? ("($%8.2f)" % -c.expenditure.amount) : ("$%8.2f" % c.expenditure.amount)
 		if (c.cashed)
 			row[4] = 1
 		else
