@@ -168,7 +168,7 @@ class AddCheck
 				end
 				expenditure = @treasury.add_expenditure(-1, date, name, amount, check_no)
 				dialog.destroy
-				return @treasury.check(expenditure.check_no)
+				return @treasury.check_by_cid(expenditure.cid)
 			else
 				puts "Aborted"
 			end
