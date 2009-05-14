@@ -120,26 +120,24 @@ class Treasury
 			}
 			@allocations.push(a)
 		}
+		@db.execute("SELECT checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID") { |e|
+			c = Check.new(e[0],e[1],e[2]) { |c|
+				@dirty_checks[c] = true
+			}
+			@checks.push(c)
+		}
 		@db.execute("SELECT ROWID,date,name,amount,allocid,check_no FROM expenditures") { |expenditure|
 			if (expenditure[5].nil?)
-				e = Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3], nil, nil) { |e|
+				e = Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3], nil) { |e|
 					@dirty_expenditures[e] = true
 				}
 				@expenditures.push(e)
 			else
-				cno = @db.get_first_row("SELECT check_no FROM checks WHERE ROWID=?", expenditure[5])[0]
-				e = Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3],cno, expenditure[5]) { |e|
+				e = Expenditure.new(expenditure[0],expenditure[4],expenditure[1],expenditure[2],expenditure[3], check_by_cid(expenditure[5])) { |e|
 					@dirty_expenditures[e] = true
 				}
 				@expenditures.push(e)
 			end
-		}
-		@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID") { |e|
-			expenditure = @expenditures.select{|item| item.expid==e[0].to_i }
-			c = Check.new(e[1],expenditure[0],e[2],e[3]) { |c|
-				@dirty_checks[c] = true
-			}
-			@checks.push(c)
 		}
 		@next_allocid = 0
 		@db.execute("SELECT max(ROWID) from allocations") { |r|
@@ -182,11 +180,9 @@ class Treasury
 	def expenditure(expid)
 		e = @expenditures.select { |item| item.expid == expid.to_i }
 		if (e.size == 0)
-			puts "No such expenditure (##{expid}) found"
-			return nil
+			raise ExpenditureNotFoundError.new()
 		elsif (e.size > 1)
-			STDERR.puts "Error! Multiple identically-numbered expenditures detected!"
-			Kernel.exit(1)
+			raise DuplicateExpenditureError.new()
 		end
 		return e[0]
 		#@db.execute("SELECT expenditures.allocid,expenditures.date,expenditures.name,expenditures.amount,expenditures.check_no,checks.check_no FROM expenditures,checks WHERE expenditures.ROWID=#{expid} AND checks.ROWID=expenditures.check_no") { |e|
@@ -228,6 +224,28 @@ class Treasury
 		#}
 	end
 
+	def expenditure_with(check)
+		c = @expenditures.select { |e| e.check == check }
+		if (c.size == 0)
+			raise ExpenditureNotFoundError.new()
+		elsif (c.size > 1)
+			raise DuplicateExpenditureError.new()
+		else
+			return c[0]
+		end
+	end
+
+	def expenditure_for(cid)
+		c = @expenditures.select { |e| e.cid == cid }
+		if (c.size == 0)
+			raise ExpenditureNotFoundError.new()
+		elsif (c.size > 1)
+			raise DuplicateExpenditureError.new()
+		else
+			return c[0]
+		end
+	end
+
 	def check(check_no)
 		c = @checks.select {|item| item.check_no == check_no.to_i }
 		if (c.size == 0)
@@ -239,7 +257,7 @@ class Treasury
 	end
 
 	def check_by_cid(cid)
-		c = @checks.select { |i| i.cid == cid }
+		c = @checks.select { |i| i.cid == cid.to_i }
 		if (c.size == 0)
 			raise CheckNotFoundError.new(cid)
 		elsif (c.size > 1)
@@ -278,11 +296,11 @@ class Treasury
 			}
 		else
 			cid = next_cid()
-			expenditure = Expenditure.new(expid,allocid,date,name,amount,check_no,cid) { |e|
-				@dirty_expenditures[e] = true
-			}
-			c = Check.new(check_no, expenditure, allocid.to_i == -1 ? 1 : 0, cid) { |c|
+			c = Check.new(check_no, allocid.to_i == -1 ? 1 : 0, cid) { |c|
 				@dirty_checks[c] = true
+			}
+			expenditure = Expenditure.new(expid,allocid,date,name,amount,c) { |e|
+				@dirty_expenditures[e] = true
 			}
 			@checks.push(c)
 			@added_checks.push(c)
@@ -335,7 +353,7 @@ class Treasury
 		if (!check_no.nil?)
 			ret = []
 			c = check(check_no)
-			e = c.expenditure
+			e = expenditure_for(c.cid)
 			if (!e.nil?)
 				@deleted_expenditures.push(e)
 				@expenditures.delete(e)
@@ -352,7 +370,7 @@ class Treasury
 		if (!cid.nil?)
 			ret = []
 			c = check_by_cid(cid)
-			e = c.expenditure
+			e = expenditure_for(c.cid)
 			if (!e.nil?)
 				@deleted_expenditures.push(e)
 				@expenditures.delete(e)

@@ -36,3 +36,9 @@ class DuplicateCheckError < RuntimeError
 		"Check ##{@check_no} has duplicates!"
 	end
 end
+
+class ExpenditureNotFoundError < RuntimeError
+end
+
+class DuplicateExpenditureError < RuntimeError
+end
