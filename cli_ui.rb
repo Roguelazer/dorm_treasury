@@ -244,18 +244,18 @@ class CLIInterface
 		print "|-----------------------------------------------------------------------------------------|\n"
 		print "| Check |   Date     |             To                                  |  Amount  |Cashed?|\n"
 		print "|-----------------------------------------------------------------------------------------|\n"
-		@treasury.each_check { |check|
+		@treasury.each_check_with_expenditure { |check, e|
 			if (open && check.cashed)
 				next
 			end
 			print "| " + "%5d" % check.check_no + " "
-			print "| " + check.expenditure.date.to_s + " "
-			print "| " + check.expenditure.name.to_s[0..47]
-			if (check.expenditure.name.to_s.size < 48)
-				print " " * (48 - check.expenditure.name.to_s.size)
+			print "| " + e.date.to_s + " "
+			print "| " + e.name.to_s[0..47]
+			if (e.name.to_s.size < 48)
+				print " " * (48 - e.name.to_s.size)
 			end
 			print "| "
-			print "%8.2f" % check.expenditure.amount
+			print "%8.2f" % e.amount
 			print " |"
 			if (check.cashed)
 				print " True "

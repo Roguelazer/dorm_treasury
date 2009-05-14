@@ -278,6 +278,12 @@ class Treasury
 		#}
 	end
 
+	def each_check_with_expenditure
+		@checks.each { |c|
+			yield c,expenditure_with(c)
+		}
+	end
+
 	def add_allocation(date, name, amount, closed=false)
 		allocid = next_allocid()
 		allocation = Allocation.new(allocid, date, name, amount, closed) { |a|
@@ -401,9 +407,8 @@ class Treasury
 		#						 checks.cashed=0")[0].to_f
 		accum = 0.0
 		@expenditures.each { |e|
-			if (!e.check_no.nil?)
-				c = check(e.check_no)
-				if (!c.cashed)
+			if (!e.check.nil?)
+				if (!e.check.cashed)
 					accum += e.amount
 				end
 			end
@@ -414,9 +419,8 @@ class Treasury
 	def checks_cashed
 		accum = 0.0
 		@expenditures.each { |e|
-			if (!e.check_no.nil?)
-				c = check(e.check_no)
-				if (c.cashed)
+			if (!e.check.nil?)
+				if (e.check.cashed)
 					accum += e.amount
 				end
 			end
