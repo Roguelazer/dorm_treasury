@@ -174,9 +174,6 @@ class Treasury
 			Kernel.exit(1)
 		end
 		return a[0]
-		#@db.execute("SELECT date,name,amount,closed FROM allocations WHERE ROWID=#{allocid}") { |allocation|
-		#	return Allocation.new(allocid, allocation[0], allocation[1], allocation[2], allocation[3])
-		#}
 	end
 
 	def expenditure(expid)
@@ -189,9 +186,6 @@ class Treasury
 			Kernel.exit(1)
 		end
 		return e[0]
-		#@db.execute("SELECT expenditures.allocid,expenditures.date,expenditures.name,expenditures.amount,expenditures.check_no,checks.check_no FROM expenditures,checks WHERE expenditures.ROWID=#{expid} AND checks.ROWID=expenditures.check_no") { |e|
-		#	return Expenditure.new(expid, e[0], e[1], e[2], e[3],e[4])
-		#}
 	end
 
 	def each_allocation(open_only=false)
@@ -217,15 +211,6 @@ class Treasury
 				yield e
 			end
 		}
-		#@db.execute("SELECT expenditures.ROWID,date,name,amount,expenditures.check_no FROM expenditures WHERE allocid=#{allocid}") { |expenditure|
-		#
-		#	if (expenditure[4].nil?)
-		#		yield Expenditure.new(expenditure[0], allocid, expenditure[1], expenditure[2], expenditure[3], nil)
-		#	else
-		#		cno = @db.get_first_row("SELECT check_no FROM checks WHERE ROWID=#{expenditure[4]}")[0]
-		#		yield Expenditure.new(expenditure[0],allocid,expenditure[1],expenditure[2],expenditure[3], cno)
-		#	end
-		#}
 	end
 
 	def check(check_no)
@@ -250,14 +235,6 @@ class Treasury
 
 	def each_check
 		@checks.each { |c| yield c }
-		#@db.execute("SELECT expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID,expenditures.date FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID ORDER BY checks.check_no, date") { |e|
-		#	expenditure = @expenditures.select{|item| item.expid==e[0].to_i }
-		#	if (expenditure.size != 1)
-		#		STDERR.puts "Error; expenditures to checks is not 1-to-1"
-		#	else
-		#		yield Check.new(e[1], expenditure[0], e[2],e[3])
-		#	end
-		#}
 	end
 
 	def add_allocation(date, name, amount, closed=false)
@@ -294,7 +271,6 @@ class Treasury
 
 	def cash_check(check_no)
 		check(check_no).cashed = true
-		#@db.execute("UPDATE checks SET cashed=1 WHERE check_no=#{check_no}")
 	end
 
 	def delete_allocation(allocid)
@@ -366,7 +342,6 @@ class Treasury
 	end
 
 	def balance
-		#return @db.get_first_row("SELECT sum(-amount) FROM expenditures")[0]
 		s = 0
 		@expenditures.each do |e|
 			s -= e.amount
@@ -375,12 +350,6 @@ class Treasury
 	end
 
 	def checks_uncashed
-		#return @db.get_first_row("SELECT
-		#						 SUM(expenditures.amount),expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID
-		#						 FROM expenditures,checks WHERE
-		#						 expenditures.check_no IS NOT NULL AND
-		#						 expenditures.check_no=checks.ROWID AND
-		#						 checks.cashed=0")[0].to_f
 		accum = 0.0
 		@expenditures.each { |e|
 			if (!e.check_no.nil?)
@@ -404,11 +373,9 @@ class Treasury
 			end
 		}
 		return accum
-		#return @db.get_first_row("SELECT SUM(expenditures.amount),expenditures.ROWID,checks.check_no,checks.cashed,checks.ROWID FROM expenditures,checks WHERE expenditures.check_no IS NOT NULL AND expenditures.check_no=checks.ROWID AND checks.cashed=1")[0].to_f
 	end
 
 	def total_allocations(active_only=false)
-		#return @db.get_first_row("SELECT sum(amount) FROM allocations")[0].to_f
 		s = 0
 		@allocations.each do |a|
 			if (!active_only || !a.closed)
@@ -423,9 +390,6 @@ class Treasury
 	end
 
 	def total_spent_for_allocations(active_only = false)
-		#return @db.get_first_row("SELECT SUM(expenditures.amount) FROM
-		#expenditures,allocations WHERE
-		#allocations.ROWID=expenditures.allocid")[0]
 		accum = 0.0
 		@expenditures.each { |e|
 			if (e.allocid > 0 && (!active_only || !allocation(e.allocid).closed))
@@ -440,7 +404,6 @@ class Treasury
 			return
 		end
 		allocation(allocid).closed = true
-		#@db.execute("UPDATE allocations SET closed=1 WHERE ROWID=#{allocid}")
 	end
 
 	private :read_db
