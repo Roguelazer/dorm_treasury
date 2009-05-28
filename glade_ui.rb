@@ -168,7 +168,7 @@ class AddCheck
 				end
 				expenditure = @treasury.add_expenditure(-1, date, name, amount, check_no)
 				dialog.destroy
-				return @treasury.check_by_cid(expenditure.cid)
+				return expenditure.check
 			else
 				puts "Aborted"
 			end
@@ -214,7 +214,9 @@ class AllocationInfo
 			row[2] = e.name
 			row[3] = e.amount.to_f
 			if (e.check_no == nil)
-				row[4] = "Cash"
+				row[4] = "cash"
+			elsif (e.deposit?)
+				row[4] = "deposit"
 			else
 				row[4] = e.check_no.to_s
 			end
@@ -280,6 +282,13 @@ class AllocationInfo
 			row[1] = expenditure.date.to_s
 			row[2] = expenditure.name
 			row[3] = expenditure.amount
+			if (expenditure.check == nil)
+				row[4] = "cash"
+			elsif (expenditure.deposit?)
+				row[4] = "deposit"
+			else
+				row[4] = expenditure.check_no.to_s
+			end
 			update_exp_summary(@allocid)
 		end
 	end
@@ -378,9 +387,8 @@ class GtkUiGlade
 		}
 		update_alloc_summary
 		@allocationslist.selection.selected[4] = spent.to_s
-		if (!expenditure.cid.nil?)
-			c = @treasury.check_by_cid(expenditure.cid)
-			add_check(c)
+		if (!expenditure.check.nil?)
+			add_check(expenditure.check)
 			update_checking_total
 		end
 	end
@@ -439,6 +447,7 @@ class GtkUiGlade
 
 	def add_check(c)
 		row = @checkslistmodel.append
+		e = @treasury.expenditure_with(c)
 		row[0] = c.check_no.to_s
 		if (row[0] == "-1")
 			row[0] = "deposit"
@@ -448,9 +457,9 @@ class GtkUiGlade
 			row[5] = 1
 			row[6] = 0
 		end
-		row[1] = c.expenditure.date.to_s
-		row[2] = c.expenditure.name.to_s
-		row[3] = (row[0] == "deposit") ? ("($%8.2f)" % -c.expenditure.amount) : ("$%8.2f" % c.expenditure.amount)
+		row[1] = e.date.to_s
+		row[2] = e.name.to_s
+		row[3] = (row[0] == "deposit") ? ("($%8.2f)" % -e.amount) : ("$%8.2f" % e.amount)
 		if (c.cashed)
 			row[4] = 1
 		else

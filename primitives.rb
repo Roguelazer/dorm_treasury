@@ -76,10 +76,10 @@ end
 
 class Expenditure
 	extend Dirtyable
-	protected_attr :allocid, :date, :name, :amount, :check_no, :cid
+	protected_attr :allocid, :date, :name, :amount, :check
 	attr_reader :expid
 
-	def initialize(expid, allocid, date, name, amount, check_no, cid, &block)
+	def initialize(expid, allocid, date, name, amount, check, &block)
 		@expid = expid.to_i
 		@allocid = allocid.to_i
 		if (date.is_a?(Date))
@@ -89,9 +89,28 @@ class Expenditure
 		end
 		@name = name.to_s
 		@amount = amount.to_f
-		@check_no = check_no
-		@cid = cid
+		@check = check
 		@listeners = [block]
+	end
+
+	def check_no
+		if (@check)
+			return @check.check_no
+		else
+			return nil
+		end
+	end
+
+	def cid
+		if (@check)
+			return @check.cid
+		else
+			return nil
+		end
+	end
+
+	def deposit?
+		return @check.deposit?
 	end
 
 	def to_s
@@ -106,11 +125,10 @@ end
 class Check
 	extend Dirtyable
 	protected_attr :cashed
-	attr_reader :expenditure, :check_no, :cid
+	attr_reader :check_no, :cid
 
-	def initialize(number, expenditure, cashed, cid, &block)
+	def initialize(number, cashed, cid, &block)
 		@check_no = number.to_i
-		@expenditure = expenditure
 		if (cashed.to_i > 0)
 			@cashed = true
 		else
@@ -121,7 +139,7 @@ class Check
 	end
 
 	def to_s
-		"Check ##{check_no}: $#{expenditure.amount} to #{expenditure.name}" + (@cashed ? " (Cashed)" : "")
+		"Check ##{@check_no}; CID #{@cid} " + (@cashed ? " (Cashed)" : "")
 	end
 
 	def add_listener(&block)
