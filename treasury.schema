@@ -1,0 +1,24 @@
+/* Schema for Dorm Treasury. Designed for use with sqlite 3 */
+
+CREATE TABLE allocations(
+	ROWID INTEGER PRIMARY KEY AUTOINCREMENT,
+	date TEXT,
+	name TEXT,
+	amount REAL,
+	closed INTEGER
+);
+
+CREATE TABLE expenditures(
+	ROWID INTEGER PRIMARY KEY AUTOINCREMENT,
+	date TEXT,
+	name TEXT,
+	amount REAL,
+	allocid INTEGER,
+	check_no INTEGER
+);
+
+CREATE TABLE checks(
+	ROWID INTEGER PRIMARY KEY AUTOINCREMENT,
+	check_no INTEGER,
+	cashed INTEGER
+);
