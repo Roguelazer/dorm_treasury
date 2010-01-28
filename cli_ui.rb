@@ -417,7 +417,7 @@ class CLIInterface
 			end
 			amount = get_input("Input Amount (neg for deposit) : ")
 			name = get_input("Input Title                    : ")
-			check_no = get_input("Check # (blank for deposit)    : ")
+			check_no = get_input("Check # (blank for deposit)    : ").to_i
 			if (check_no == "" || check_no == "")
 				check_no = -1
 			end

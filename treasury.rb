@@ -317,8 +317,10 @@ class Treasury
 	end
 
 	def cash_check(check_no)
-		check(check_no).cashed = true
-		#@db.execute("UPDATE checks SET cashed=1 WHERE check_no=#{check_no}")
+		@checks.select {|item| item.check_no == check_no.to_i }.each { |c|
+			c.cashed = true
+			@dirty_checks[c] = true
+        }
 	end
 
 	def delete_allocation(allocid)
@@ -408,7 +410,7 @@ class Treasury
 		accum = 0.0
 		@expenditures.each { |e|
 			if (!e.check.nil?)
-				if (!e.check.cashed)
+				if (!e.check.cashed and !e.check.deposit?)
 					accum += e.amount
 				end
 			end
@@ -420,7 +422,7 @@ class Treasury
 		accum = 0.0
 		@expenditures.each { |e|
 			if (!e.check.nil?)
-				if (e.check.cashed)
+				if (e.check.cashed or e.check.deposit?)
 					accum += e.amount
 				end
 			end
